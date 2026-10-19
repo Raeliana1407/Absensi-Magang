@@ -19,7 +19,7 @@ export default function Timesheet() {
       try {
         // PERHATIAN: Pastikan rute ini sesuai dengan backend Anda. 
         // Jika rute backend Anda '/api/absen/riwayat/:user_id', ubah URL di bawah.
-        const response = await fetch(`http://localhost:3000/api/riwayat/${user.id}`, {
+        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/riwayat/${user.id}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`

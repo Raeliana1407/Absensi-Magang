@@ -22,7 +22,7 @@ export default function AdminUsers() {
   // Ambil data user dari backend
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/admin/users', {
+      const response = await fetch('https://absensi-magang-beta.vercel.app/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` } // Wajib ada!
       });
       const result = await response.json();
@@ -71,7 +71,7 @@ export default function AdminUsers() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:3000/api/admin/users/${selectedUser.id}`, {
+      const response = await fetch(`https://absensi-magang-beta.vercel.app/api/admin/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',

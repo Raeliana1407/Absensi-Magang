@@ -14,7 +14,7 @@ export default function AdminSettings() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/admin/settings', {
+        const response = await fetch('https://absensi-magang-beta.vercel.app/api/admin/settings', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
@@ -41,7 +41,7 @@ export default function AdminSettings() {
     e.preventDefault(); // Mencegah reload halaman
     
     try {
-      const response = await fetch('http://localhost:3000/api/admin/settings', {
+      const response = await fetch('https://absensi-magang-beta.vercel.app/api/admin/settings', {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',

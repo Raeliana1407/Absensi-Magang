@@ -12,7 +12,7 @@ export default function PersetujuanIzin() {
   const fetchData = async () => {
     try {
       // 1. Fetch Pending (Asumsi route ini tidak butuh id pembimbing di backend)
-      const resPending = await fetch('http://localhost:3000/api/pengajuan/pending', {
+      const resPending = await fetch('https://absensi-magang-beta.vercel.app/api/pengajuan/pending', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const dataPending = await resPending.json();
@@ -20,7 +20,7 @@ export default function PersetujuanIzin() {
 
       // 2. Fetch Riwayat Khusus Pembimbing ini
       if (user.id) {
-        const resRiwayat = await fetch(`http://localhost:3000/api/pengajuan/riwayat-pembimbing/${user.id}`, {
+        const resRiwayat = await fetch(`https://absensi-magang-beta.vercel.app/api/pengajuan/riwayat-pembimbing/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const dataRiwayat = await resRiwayat.json();
@@ -44,7 +44,7 @@ export default function PersetujuanIzin() {
     if (!konfirmasi) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/pengajuan/status/${id}`, {
+      const response = await fetch(`https://absensi-magang-beta.vercel.app/api/pengajuan/status/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ export default function PersetujuanIzin() {
 
                 {item.file_lampiran && (
                   <a 
-                    href={`http://localhost:3000/uploads/${item.file_lampiran}`} 
+                    href={`https://absensi-magang-beta.vercel.app/uploads/${item.file_lampiran}`} 
                     target="_blank" 
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 mb-4 hover:underline ml-2"

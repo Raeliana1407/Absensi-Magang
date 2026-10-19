@@ -18,7 +18,7 @@ export default function Laporan() {
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:3000/api/laporan/rekap/${user.id}?bulan=${bulan}&tahun=${tahun}`, {
+        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/laporan/rekap/${user.id}?bulan=${bulan}&tahun=${tahun}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();

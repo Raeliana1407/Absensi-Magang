@@ -18,7 +18,7 @@ export default function Register() {
     setPesan({ type: '', text: '' });
 
     try {
-      const response = await fetch('http://localhost:3000/api/register', {
+      const response = await fetch('https://absensi-magang-beta.vercel.app/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

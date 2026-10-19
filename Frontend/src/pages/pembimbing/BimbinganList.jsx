@@ -15,7 +15,7 @@ export default function BimbinganList() {
       if (!currentUser || !currentUser.id) return;
       
       try {
-        const response = await fetch(`http://localhost:3000/api/pembimbing/bimbingan/${currentUser.id}`);
+        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/pembimbing/bimbingan/${currentUser.id}`);
         const result = await response.json();
         
         if (result.success) {

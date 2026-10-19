@@ -14,7 +14,7 @@ export default function Jurnal() {
   const fetchRiwayat = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/jurnal/${currentUser.id}`);
+      const res = await fetch(`https://absensi-magang-beta.vercel.app/api/jurnal/${currentUser.id}`);
       const data = await res.json();
       if (data.success) {
         setRiwayat(data.data);
@@ -40,7 +40,7 @@ export default function Jurnal() {
     const gabunganKegiatan = `[${judul}] ${deskripsi}`;
 
     try {
-      const res = await fetch('http://localhost:3000/api/jurnal', {
+      const res = await fetch('https://absensi-magang-beta.vercel.app/api/jurnal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -26,7 +26,7 @@ export default function Izin() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/pengajuan/izin', {
+      const response = await fetch('https://absensi-magang-beta.vercel.app/api/pengajuan/izin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

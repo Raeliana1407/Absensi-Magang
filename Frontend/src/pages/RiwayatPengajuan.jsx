@@ -12,7 +12,7 @@ export default function RiwayatPengajuan() {
   useEffect(() => {
     const fetchRiwayat = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/api/pengajuan/riwayat/${user.id}`, {
+        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/pengajuan/riwayat/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();

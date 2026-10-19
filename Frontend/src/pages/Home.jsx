@@ -44,7 +44,7 @@ export default function Home() {
       const token = localStorage.getItem('token');
       
       // A. Ambil Status Hari Ini (Untuk Tombol Shift & Timeline Hari Ini)
-      const resStatus = await fetch(`http://localhost:3000/api/absen/status/${user.id}`, {
+      const resStatus = await fetch(`https://absensi-magang-beta.vercel.app/api/absen/status/${user.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -59,7 +59,7 @@ export default function Home() {
       }
 
       // B. Ambil Riwayat Total (Untuk Angka "Days Present" di Kartu Biru)
-      const resRiwayat = await fetch(`http://localhost:3000/api/riwayat/${user.id}`, {
+      const resRiwayat = await fetch(`https://absensi-magang-beta.vercel.app/api/riwayat/${user.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -105,7 +105,7 @@ export default function Home() {
 
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch('http://localhost:3000/api/absen', {
+          const response = await fetch('https://absensi-magang-beta.vercel.app/api/absen', {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',

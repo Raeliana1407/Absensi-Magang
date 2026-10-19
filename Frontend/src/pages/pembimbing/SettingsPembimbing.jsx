@@ -33,7 +33,7 @@ export default function SettingsPembimbing() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/ubah-kata-sandi', {
+      const response = await fetch('https://absensi-magang-beta.vercel.app/api/ubah-kata-sandi', {
         method: 'POST', 
         headers: {
           'Content-Type': 'application/json',

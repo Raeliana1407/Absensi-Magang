@@ -29,13 +29,13 @@ export default function Profile() {
         if (!token || !user.id) return;
 
         // 1. Fetch Riwayat Absen (Untuk hitung On-Time & Skor)
-        const resRiwayat = await fetch(`http://localhost:3000/api/riwayat/${user.id}`, {
+        const resRiwayat = await fetch(`https://absensi-magang-beta.vercel.app/api/riwayat/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const dataRiwayat = await resRiwayat.json();
 
         // 2. Fetch Riwayat Pengajuan (Untuk hitung Sisa Cuti & Status Pending)
-        const resPengajuan = await fetch(`http://localhost:3000/api/pengajuan/riwayat/${user.id}`, {
+        const resPengajuan = await fetch(`https://absensi-magang-beta.vercel.app/api/pengajuan/riwayat/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const dataPengajuan = await resPengajuan.json();

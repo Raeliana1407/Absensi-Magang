@@ -20,7 +20,7 @@ export default function DashboardPembimbing() {
       try {
         const token = localStorage.getItem('token');
         // Panggil route yang baru saja kita buat dengan parameter user.id pembimbing
-        const response = await fetch(`http://localhost:3000/api/pembimbing/dashboard-hari-ini/${user.id}`, {
+        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/pembimbing/dashboard-hari-ini/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();

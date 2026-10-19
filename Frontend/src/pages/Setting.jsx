@@ -37,7 +37,7 @@ export default function Setting() {
       // Pastikan endpoint ini sesuai dengan backend Anda
       // Asumsi rute ini didaftarkan dengan app.use('/api/auth', ...) di server.js Anda
       // Pastikan method-nya POST dan URL-nya tepat
-      const response = await fetch('http://localhost:3000/api/ubah-kata-sandi', {
+      const response = await fetch('https://absensi-magang-beta.vercel.app/api/ubah-kata-sandi', {
         method: 'POST', 
         headers: {
           'Content-Type': 'application/json',
