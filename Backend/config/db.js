@@ -8,7 +8,11 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    // TAMBAHKAN BLOK SSL INI DI BAWAH:
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 module.exports = pool;
