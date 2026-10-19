@@ -24,6 +24,16 @@ app.use('/api/pengajuan', pengajuanRoutes);
 app.use('/uploads', express.static('public/uploads'));
 app.use('/api/laporan', laporanRoutes);
 
-// Jalankan Server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server Backend berjalan super rapi di port ${PORT}`));
+// Route Utama (Biar tidak "Cannot GET /" di Vercel)
+app.get('/', (req, res) => {
+    res.send('API Backend ClockSync Berjalan Sempurna di Vercel! 🚀');
+});
+
+// Jalankan Server (Hanya untuk lokal, di Vercel diabaikan)
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => console.log(`Server Backend berjalan super rapi di port ${PORT}`));
+}
+
+// WAJIB UNTUK VERCEL SERVERLESS
+module.exports = app;
