@@ -6,10 +6,11 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 18282, // Pastikan port Aiven (18282) masuk di sini
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 5,
     queueLimit: 0,
-    // TAMBAHKAN BLOK SSL INI DI BAWAH:
+    connectTimeout: 60000, // Beri waktu tunggu hingga 60 detik khusus untuk Vercel!
     ssl: {
         rejectUnauthorized: false
     }
