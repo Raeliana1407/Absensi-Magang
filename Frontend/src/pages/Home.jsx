@@ -43,9 +43,15 @@ export default function Home() {
     try {
       const token = localStorage.getItem('token');
       
-      // A. Ambil Status Hari Ini (Untuk Tombol Shift & Timeline Hari Ini)
-      const resStatus = await fetch(`https://absensi-magang-beta.vercel.app/api/absen/status/${user.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      // JURUS 1: Cache-Buster (menambahkan stempel waktu agar URL selalu dianggap baru oleh Browser)
+      const timestamp = new Date().getTime();
+      
+      // A. Ambil Status Hari Ini
+      const resStatus = await fetch(`https://absensi-magang-beta.vercel.app/api/absen/status/${user.id}?t=${timestamp}`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache' // Paksa browser jangan pakai cache
+        }
       });
       
       if (resStatus.ok) {
@@ -53,26 +59,26 @@ export default function Home() {
         if (resultStatus.success) {
           setShiftPhase(resultStatus.shiftPhase);
           localStorage.setItem('shift_phase', resultStatus.shiftPhase);
-          localStorage.setItem('shift_date', new Date().toDateString()); // Simpan tanggal hari ini
+          localStorage.setItem('shift_date', new Date().toDateString()); 
           setTodayLogs(resultStatus.data || []);
         }
       }
 
-      // B. Ambil Riwayat Total (Untuk Angka "Days Present" di Kartu Biru)
-      const resRiwayat = await fetch(`https://absensi-magang-beta.vercel.app/api/riwayat/${user.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      // B. Ambil Riwayat Total
+      const resRiwayat = await fetch(`https://absensi-magang-beta.vercel.app/api/riwayat/${user.id}?t=${timestamp}`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache' 
+        }
       });
       
       if (resRiwayat.ok) {
         const resultRiwayat = await resRiwayat.json();
         if (resultRiwayat.success && resultRiwayat.data) {
-          // Logika: Kita hanya menghitung absen yang berjenis 'masuk'
-          // Agar 1 hari yang punya banyak aktivitas tetap dihitung 1 Hari Hadir
           const logsMasuk = resultRiwayat.data.filter(log => log.jenis_absen === 'masuk');
           setKehadiranBulanIni(logsMasuk.length);
         }
       }
-
     } catch (err) {
       console.error('Gagal mengambil data dashboard:', err);
     }
@@ -124,7 +130,13 @@ export default function Home() {
             setStatusMessage(result.message);
             setIsSuccess(true);
             
-            // Perbarui Data Timeline Seketika Tanpa Reload
+            // JURUS 2: Optimistic UI Update
+            // Ubah state React dan LocalStorage detik itu juga! 
+            // Jangan biarkan UI menunggu balasan API yang lelet
+            setShiftPhase(nextPhase);
+            localStorage.setItem('shift_phase', nextPhase);
+            
+            // Perbarui Data Timeline di latar belakang
             await fetchDataDashboard(); 
             
           } else {
@@ -145,7 +157,6 @@ export default function Home() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
-
   // Helper untuk Desain Timeline (Warna & Icon sesuai jenis absen)
   const getTimelineStyle = (jenis) => {
     if(jenis === 'masuk') return { bg: 'bg-emerald-100', dot: 'bg-emerald-500', title: 'Clocked In', desc: 'On-Site Location', textStatus: 'On Time', textColor: 'text-emerald-600 bg-emerald-50' };
