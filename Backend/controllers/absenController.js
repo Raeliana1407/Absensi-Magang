@@ -103,7 +103,15 @@ const clockIn = async (req, res) => {
 const getRiwayat = async (req, res) => {
     try {
         const userId = req.params.user_id;
-        const query = `SELECT id, jenis_absen, waktu_absen, status FROM absensi WHERE user_id = ? ORDER BY waktu_absen DESC`;
+        // PERBAIKAN: Gunakan DATE_FORMAT agar MySQL mengirim waktu sebagai Teks Kaku, bukan objek Date yang bisa dirusak Vercel
+        const query = `
+            SELECT id, jenis_absen, 
+            DATE_FORMAT(waktu_absen, '%Y-%m-%dT%H:%i:%s') as waktu_absen, 
+            status 
+            FROM absensi 
+            WHERE user_id = ? 
+            ORDER BY waktu_absen DESC
+        `;
         const [rows] = await pool.execute(query, [userId]);
         res.json({ success: true, data: rows });
     } catch (error) {
@@ -117,12 +125,14 @@ const cekStatusHariIni = async (req, res) => {
     try {
         const { id } = req.params; 
 
-        // PERBAIKAN: Hitung tanggal WITA secara mandiri
         const todayWITA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
 
-        // Gunakan todayWITA untuk pencarian
+        // PERBAIKAN: Gunakan DATE_FORMAT juga di sini
         const query = `
-            SELECT * FROM absensi 
+            SELECT id, jenis_absen, 
+            DATE_FORMAT(waktu_absen, '%Y-%m-%dT%H:%i:%s') as waktu_absen, 
+            status 
+            FROM absensi 
             WHERE user_id = ? AND DATE(waktu_absen) = ? 
             ORDER BY waktu_absen ASC
         `;
