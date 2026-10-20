@@ -133,13 +133,26 @@ const getRiwayat = async (req, res) => {
     }
 };
 
-// 3. Mengecek Status Absen Hari Ini (Sekarang mengirimkan Settings Jam Kerja)
+// 3. Mengecek Status Absen Hari Ini (Agar Tombol Istirahat & Pulang Muncul)
 const cekStatusHariIni = async (req, res) => {
     try {
         const { id } = req.params; 
-        const todayWITA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
+        
+        // PERBAIKAN: Rakit tanggal YYYY-MM-DD secara manual agar tidak dirusak format Vercel
+        const now = new Date();
+        const options = { timeZone: 'Asia/Makassar', year: 'numeric', month: '2-digit', day: '2-digit' };
+        const parts = new Intl.DateTimeFormat('en-CA', options).formatToParts(now);
+        
+        let year, month, day;
+        parts.forEach(p => {
+            if (p.type === 'year') year = p.value;
+            if (p.type === 'month') month = p.value;
+            if (p.type === 'day') day = p.value;
+        });
+        // Pasti menghasilkan "2026-10-20" yang dikenali MySQL
+        const todayWITA = `${year}-${month}-${day}`; 
 
-        // --- TAMBAHAN MISI 2: Ambil Setting Jam dari DB ---
+        // --- Ambil Setting Jam dari DB (MISI 2) ---
         const [settingsRows] = await pool.execute('SELECT jam_masuk, jam_pulang FROM settings LIMIT 1');
         const jadwal = settingsRows.length > 0 ? settingsRows[0] : { jam_masuk: '08:00:00', jam_pulang: '16:00:00' };
 
@@ -154,7 +167,6 @@ const cekStatusHariIni = async (req, res) => {
         const [rows] = await pool.execute(query, [id, todayWITA]);
 
         if (rows.length === 0) {
-            // Selipkan jadwal di response
             return res.json({ success: true, shiftPhase: 'idle', data: [], jadwal: jadwal });
         }
 
@@ -169,7 +181,6 @@ const cekStatusHariIni = async (req, res) => {
             currentPhase = 'completed';
         }
 
-        // Selipkan jadwal di response
         res.json({ success: true, shiftPhase: currentPhase, data: rows, jadwal: jadwal });
     } catch (error) {
         console.error('Error cek status:', error);
