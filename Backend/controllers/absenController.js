@@ -18,10 +18,33 @@ const clockIn = async (req, res) => {
     try {
         const { user_id, latitude, longitude, jenis_absen } = req.body;
         
-        // Ambil tanggal WITA hari ini untuk validasi
-        const todayWITA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
+        const now = new Date();
+        const options = { 
+            timeZone: 'Asia/Makassar', year: 'numeric', month: '2-digit', 
+            day: '2-digit', hour: '2-digit', minute: '2-digit', 
+            second: '2-digit', hour12: false
+        };
+        const parts = new Intl.DateTimeFormat('en-CA', options).formatToParts(now);
         
-        const checkQuery = `SELECT id FROM absensi WHERE user_id = ? AND jenis_absen = ? AND DATE(waktu_absen) = ?`;
+        let year, month, day, hour, minute, second;
+        parts.forEach(p => {
+            if (p.type === 'year') year = p.value;
+            if (p.type === 'month') month = p.value;
+            if (p.type === 'day') day = p.value;
+            if (p.type === 'hour') hour = p.value === '24' ? '00' : p.value;
+            if (p.type === 'minute') minute = p.value;
+            if (p.type === 'second') second = p.value;
+        });
+
+        // Amankan jadi 2 digit jaga-jaga Vercel error
+        month = String(month).padStart(2, '0');
+        day = String(day).padStart(2, '0');
+        
+        const todayWITA = `${year}-${month}-${day}`;
+        const waktu_absen = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+
+        // PERBAIKAN 1: Bantai fungsi DATE(), ganti pakai LIKE TEKS!
+        const checkQuery = `SELECT id FROM absensi WHERE user_id = ? AND jenis_absen = ? AND waktu_absen LIKE CONCAT(?, '%')`;
         const [existing] = await pool.execute(checkQuery, [user_id, jenis_absen, todayWITA]);
         
         if (existing.length > 0) {
@@ -39,30 +62,6 @@ const clockIn = async (req, res) => {
         const RADIUS_MAKSIMAL = parseInt(settings.radius);
 
         const distance = calculateDistance(KANTOR_LAT, KANTOR_LNG, latitude, longitude);
-        
-        // Bentuk Waktu WITA yang absolut
-        const now = new Date();
-        const options = { 
-            timeZone: 'Asia/Makassar', year: 'numeric', month: '2-digit', 
-            day: '2-digit', hour: '2-digit', minute: '2-digit', 
-            second: '2-digit', hour12: false // Memaksa format 24 jam agar 1 PM jadi 13:00
-        };
-        const formatter = new Intl.DateTimeFormat('en-CA', options); 
-        const parts = formatter.formatToParts(now);
-        
-        let year, month, day, hour, minute, second;
-        parts.forEach(p => {
-            if (p.type === 'year') year = p.value;
-            if (p.type === 'month') month = p.value;
-            if (p.type === 'day') day = p.value;
-            if (p.type === 'hour') hour = p.value === '24' ? '00' : p.value;
-            if (p.type === 'minute') minute = p.value;
-            if (p.type === 'second') second = p.value;
-        });
-
-        const waktu_absen = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
-        
-        // Logika Validasi Waktu Berdasarkan Menit (Anti Zona Waktu Vercel)
         const currentTotalMinutes = (parseInt(hour) * 60) + parseInt(minute);
 
         let statusAbsen = 'hadir'; 
@@ -113,7 +112,7 @@ const clockIn = async (req, res) => {
     }
 };
 
-// 2. Mengambil Riwayat Absen (Format Kaku agar jam tidak diubah Vercel)
+// 2. Mengambil Riwayat Absen
 const getRiwayat = async (req, res) => {
     try {
         const userId = req.params.user_id;
@@ -133,12 +132,11 @@ const getRiwayat = async (req, res) => {
     }
 };
 
-// 3. Mengecek Status Absen Hari Ini (Agar Tombol Istirahat & Pulang Muncul)
+// 3. Mengecek Status Absen Hari Ini
 const cekStatusHariIni = async (req, res) => {
     try {
         const { id } = req.params; 
         
-        // PERBAIKAN: Rakit tanggal YYYY-MM-DD secara manual agar tidak dirusak format Vercel
         const now = new Date();
         const options = { timeZone: 'Asia/Makassar', year: 'numeric', month: '2-digit', day: '2-digit' };
         const parts = new Intl.DateTimeFormat('en-CA', options).formatToParts(now);
@@ -149,19 +147,19 @@ const cekStatusHariIni = async (req, res) => {
             if (p.type === 'month') month = p.value;
             if (p.type === 'day') day = p.value;
         });
-        // Pasti menghasilkan "2026-10-20" yang dikenali MySQL
-        const todayWITA = `${year}-${month}-${day}`; 
+        
+        const todayWITA = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        // --- Ambil Setting Jam dari DB (MISI 2) ---
         const [settingsRows] = await pool.execute('SELECT jam_masuk, jam_pulang FROM settings LIMIT 1');
         const jadwal = settingsRows.length > 0 ? settingsRows[0] : { jam_masuk: '08:00:00', jam_pulang: '16:00:00' };
 
+        // PERBAIKAN 2: Bantai fungsi DATE() di sini juga
         const query = `
             SELECT id, jenis_absen, 
             DATE_FORMAT(waktu_absen, '%Y-%m-%dT%H:%i:%s') as waktu_absen, 
             status 
             FROM absensi 
-            WHERE user_id = ? AND DATE(waktu_absen) = ? 
+            WHERE user_id = ? AND waktu_absen LIKE CONCAT(?, '%') 
             ORDER BY waktu_absen ASC
         `;
         const [rows] = await pool.execute(query, [id, todayWITA]);
