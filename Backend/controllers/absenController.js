@@ -1,8 +1,8 @@
 const pool = require('../config/db');
 
-// Fungsi Menghitung Jarak (Formula Haversine) - Tetap dipertahankan
+// Fungsi Menghitung Jarak
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Radius bumi dalam meter
+    const R = 6371e3; 
     const rad = Math.PI / 180;
     const dLat = (lat2 - lat1) * rad;
     const dLon = (lon2 - lon1) * rad;
@@ -13,23 +13,23 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c; 
 }
 
-// 1. Mencatat Absen (Masuk / Pulang / Istirahat)
+// 1. Mencatat Absen
 const clockIn = async (req, res) => {
     try {
         const { user_id, latitude, longitude, jenis_absen } = req.body;
         
-        // --- 1. Cek apakah user sudah absen hari ini ---
-        const checkQuery = `SELECT id FROM absensi WHERE user_id = ? AND jenis_absen = ? AND DATE(waktu_absen) = CURDATE()`;
-        const [existing] = await pool.execute(checkQuery, [user_id, jenis_absen]);
+        // PERBAIKAN: Hitung tanggal WITA secara mandiri
+        const todayWITA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
+        
+        // Cek apakah user sudah absen menggunakan todayWITA, BUKAN CURDATE()
+        const checkQuery = `SELECT id FROM absensi WHERE user_id = ? AND jenis_absen = ? AND DATE(waktu_absen) = ?`;
+        const [existing] = await pool.execute(checkQuery, [user_id, jenis_absen, todayWITA]);
         
         if (existing.length > 0) {
             return res.status(400).json({ success: false, message: `Aksi ${jenis_absen} sudah dilakukan hari ini.` });
         }
 
-        // --- 2. AMBIL PENGATURAN DINAMIS DARI DATABASE ---
-        // Di sinilah keajaibannya terjadi! Kita tidak lagi pakai hardcode.
         const [settingsRows] = await pool.execute('SELECT * FROM settings LIMIT 1');
-        
         if (settingsRows.length === 0) {
              return res.status(500).json({ success: false, message: 'Admin belum mengatur konfigurasi sistem (Geofence & Jam)!' });
         }
@@ -39,24 +39,15 @@ const clockIn = async (req, res) => {
         const KANTOR_LNG = parseFloat(settings.longitude);
         const RADIUS_MAKSIMAL = parseInt(settings.radius);
 
-        // --- 3. Hitung jarak dan siapkan waktu ---
         const distance = calculateDistance(KANTOR_LAT, KANTOR_LNG, latitude, longitude);
-        // --- PERBAIKAN: PAKSA AMBIL WAKTU ZONA WITA (Asia/Makassar) ---
+        
         const now = new Date();
-        
-        // Menggunakan Intl.DateTimeFormat untuk memastikan akurat di zona waktu WITA
         const options = { 
-            timeZone: 'Asia/Makassar',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
+            timeZone: 'Asia/Makassar', year: 'numeric', month: '2-digit', 
+            day: '2-digit', hour: '2-digit', minute: '2-digit', 
+            second: '2-digit', hour12: false
         };
-        
-        const formatter = new Intl.DateTimeFormat('en-CA', options); // 'en-CA' menghasilkan format YYYY-MM-DD
+        const formatter = new Intl.DateTimeFormat('en-CA', options); 
         const parts = formatter.formatToParts(now);
         
         let year, month, day, hour, minute, second;
@@ -75,16 +66,13 @@ const clockIn = async (req, res) => {
         let isSuccess = true;
         let responseMessage = 'Berhasil dicatat.';
 
-        // --- 4. Logika Validasi Jarak & Waktu (Dinamis) ---
         if (distance > RADIUS_MAKSIMAL) {
             statusAbsen = 'luar_radius';
             isSuccess = false;
-            responseMessage = `Gagal: Berada di luar zona radius. Jarak Anda: ${Math.round(distance)}m (Max: ${RADIUS_MAKSIMAL}m)`;
+            responseMessage = `Gagal: Luar radius. Jarak: ${Math.round(distance)}m`;
         } else if (jenis_absen === 'masuk') {
-            // Ambil jam masuk dari database (contoh: "09:00:00")
             const jamMasukDB = settings.jam_masuk; 
             const [jamM, menitM] = jamMasukDB.split(':');
-            
             const shiftStart = new Date();
             shiftStart.setHours(parseInt(jamM), parseInt(menitM), 0, 0); 
             
@@ -100,14 +88,10 @@ const clockIn = async (req, res) => {
             responseMessage = `Aksi ${jenis_absen} berhasil dicatat. Jarak: ${Math.round(distance)}m`;
         }
 
-        // --- 5. Simpan ke Database ---
         const query = `INSERT INTO absensi (user_id, jenis_absen, waktu_absen, latitude, longitude, status) VALUES (?, ?, ?, ?, ?, ?)`;
         await pool.execute(query, [user_id, jenis_absen, waktu_absen, latitude, longitude, statusAbsen]);
 
-        if (!isSuccess) {
-            return res.status(400).json({ success: false, message: responseMessage });
-        }
-        
+        if (!isSuccess) return res.status(400).json({ success: false, message: responseMessage });
         res.json({ success: true, message: responseMessage });
     } catch (error) {
         console.error('Error Absen:', error);
@@ -133,19 +117,19 @@ const cekStatusHariIni = async (req, res) => {
     try {
         const { id } = req.params; 
 
+        // PERBAIKAN: Hitung tanggal WITA secara mandiri
+        const todayWITA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
+
+        // Gunakan todayWITA untuk pencarian
         const query = `
             SELECT * FROM absensi 
-            WHERE user_id = ? AND DATE(waktu_absen) = CURDATE() 
+            WHERE user_id = ? AND DATE(waktu_absen) = ? 
             ORDER BY waktu_absen ASC
         `;
-        const [rows] = await pool.execute(query, [id]);
+        const [rows] = await pool.execute(query, [id, todayWITA]);
 
         if (rows.length === 0) {
-            return res.json({ 
-                success: true, 
-                shiftPhase: 'idle', 
-                data: [] 
-            });
+            return res.json({ success: true, shiftPhase: 'idle', data: [] });
         }
 
         const lastLog = rows[rows.length - 1];
@@ -159,12 +143,7 @@ const cekStatusHariIni = async (req, res) => {
             currentPhase = 'completed';
         }
 
-        res.json({ 
-            success: true, 
-            shiftPhase: currentPhase, 
-            data: rows 
-        });
-
+        res.json({ success: true, shiftPhase: currentPhase, data: rows });
     } catch (error) {
         console.error('Error cek status:', error);
         res.status(500).json({ success: false, message: 'Gagal mengecek status hari ini.' });

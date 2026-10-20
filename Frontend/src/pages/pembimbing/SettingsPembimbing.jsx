@@ -67,7 +67,7 @@ export default function SettingsPembimbing() {
     if (konfirmasi) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      navigate('/login');
+      navigate('/');
     }
   };
 

@@ -156,7 +156,10 @@ export default function Home() {
   };
 
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    // Membuang embel-embel UTC dari Vercel dengan memotong 19 karakter pertamanya ("YYYY-MM-DDTHH:mm:ss")
+    // sehingga HP membaca dan menampilkan jam aslinya tanpa ditambahkan 8 jam lagi.
+    const pureString = dateString.substring(0, 19); 
+    return new Date(pureString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
