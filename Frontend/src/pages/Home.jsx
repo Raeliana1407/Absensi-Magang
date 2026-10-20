@@ -22,7 +22,9 @@ export default function Home() {
   });
 
   const [todayLogs, setTodayLogs] = useState([]); 
-  const [kehadiranBulanIni, setKehadiranBulanIni] = useState(0); 
+  const [kehadiranBulanIni, setKehadiranBulanIni] = useState(0);
+  const [shiftStart, setShiftStart] = useState('08:00 AM');
+  const [shiftEnd, setShiftEnd] = useState('04:30 PM'); 
 
   const userDataString = localStorage.getItem('user');
   const user = userDataString ? JSON.parse(userDataString) : { id: 1, nama: 'User' };
@@ -61,6 +63,18 @@ export default function Home() {
           localStorage.setItem('shift_phase', resultStatus.shiftPhase);
           localStorage.setItem('shift_date', new Date().toDateString()); 
           setTodayLogs(resultStatus.data || []);
+          
+          // TAMBAHAN MISI 2: Tangkap jadwal dan ubah formatnya (dari "08:00:00" ke "08:00 AM")
+          if (resultStatus.jadwal) {
+             const formatJadwal = (jamDB) => {
+                const [j, m] = jamDB.split(':');
+                const dummyDate = new Date();
+                dummyDate.setHours(parseInt(j), parseInt(m));
+                return dummyDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+             };
+             setShiftStart(formatJadwal(resultStatus.jadwal.jam_masuk));
+             setShiftEnd(formatJadwal(resultStatus.jadwal.jam_pulang));
+          }
         }
       }
 
@@ -204,7 +218,7 @@ export default function Home() {
           <p className="text-sm text-slate-500 mt-1">{todayFormatted}</p>
           <div className="inline-flex items-center gap-2 mt-3 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            Standard Shift <span className="text-blue-300">•</span> 09:00 AM - 05:00 PM
+            Standard Shift <span className="text-blue-300">•</span> {shiftStart} - {shiftEnd}
           </div>
         </div>
 
@@ -350,7 +364,7 @@ export default function Home() {
                          <p className="text-[10px] text-slate-500 mt-0.5">Scheduled end of shift</p>
                       </div>
                       <div className="text-right">
-                         <span className="text-xs font-bold text-slate-400">05:00 PM</span>
+                         <span className="text-xs font-bold text-slate-400">{shiftEnd}</span>
                          <p className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 rounded mt-0.5">Pending</p>
                       </div>
                    </div>

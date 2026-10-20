@@ -133,11 +133,15 @@ const getRiwayat = async (req, res) => {
     }
 };
 
-// 3. Mengecek Status Absen Hari Ini (Agar Tombol Istirahat & Pulang Muncul)
+// 3. Mengecek Status Absen Hari Ini (Sekarang mengirimkan Settings Jam Kerja)
 const cekStatusHariIni = async (req, res) => {
     try {
         const { id } = req.params; 
         const todayWITA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Makassar' }).format(new Date());
+
+        // --- TAMBAHAN MISI 2: Ambil Setting Jam dari DB ---
+        const [settingsRows] = await pool.execute('SELECT jam_masuk, jam_pulang FROM settings LIMIT 1');
+        const jadwal = settingsRows.length > 0 ? settingsRows[0] : { jam_masuk: '08:00:00', jam_pulang: '16:00:00' };
 
         const query = `
             SELECT id, jenis_absen, 
@@ -150,7 +154,8 @@ const cekStatusHariIni = async (req, res) => {
         const [rows] = await pool.execute(query, [id, todayWITA]);
 
         if (rows.length === 0) {
-            return res.json({ success: true, shiftPhase: 'idle', data: [] });
+            // Selipkan jadwal di response
+            return res.json({ success: true, shiftPhase: 'idle', data: [], jadwal: jadwal });
         }
 
         const lastLog = rows[rows.length - 1];
@@ -164,7 +169,8 @@ const cekStatusHariIni = async (req, res) => {
             currentPhase = 'completed';
         }
 
-        res.json({ success: true, shiftPhase: currentPhase, data: rows });
+        // Selipkan jadwal di response
+        res.json({ success: true, shiftPhase: currentPhase, data: rows, jadwal: jadwal });
     } catch (error) {
         console.error('Error cek status:', error);
         res.status(500).json({ success: false, message: 'Gagal mengecek status hari ini.' });
