@@ -1,5 +1,15 @@
 const pool = require('../config/db');
 
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier'); // Bawaan multer/node, atau install jika perlu
+
+// Konfigurasi Cloudinary (Masukkan data dari Dashboard Cloudinary Anda)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 // Mengajukan Izin (Tanpa File)
 const ajukanIzin = async (req, res) => {
     try {
@@ -20,55 +30,47 @@ const ajukanIzin = async (req, res) => {
     }
 };
 
-// Mengajukan Sakit (Upload ke ImgBB)
+// Mengajukan Sakit (Upload ke Cloudinary)
 const ajukanSakit = async (req, res) => {
     try {
         const { user_id, tanggal_mulai, tanggal_selesai, keterangan } = req.body;
         let file_lampiran = null;
 
-        // Jika ada foto yang di-upload
         if (req.file) {
-            // Ubah file jadi teks Base64 untuk dikirim lewat HTTP
-            const base64Image = req.file.buffer.toString('base64');
-            const formData = new URLSearchParams();
-            formData.append('image', base64Image);
+            // Fungsi helper untuk upload buffer ke Cloudinary via Stream
+            const uploadToCloudinary = (fileBuffer) => {
+                return new Promise((resolve, reject) => {
+                    let stream = cloudinary.uploader.upload_stream(
+                        { folder: "absensi_magang" },
+                        (error, result) => {
+                            if (result) {
+                                resolve(result);
+                            } else {
+                                reject(error);
+                            }
+                        }
+                    );
+                    streamifier.createReadStream(fileBuffer).pipe(stream);
+                });
+            };
 
-            // 🔥 TARUH API KEY IMGBB ANDA DI SINI 🔥
-            // Pakai jalur YOLO, langsung hardcode aja biar gak pusing mikirin .env
-            const IMGBB_KEY = 'e7705c2dd3aa97767b185ac43ed11681'; 
-
-            // Tembak fotonya ke server ImgBB
-            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                // Sukses! Kita ambil link URL pendeknya
-                file_lampiran = data.data.url; 
-            } else {
-                console.error('ImgBB Error:', data);
-                return res.status(400).json({ success: false, message: 'Gagal upload gambar ke ImgBB.' });
-            }
+            const resultUpload = await uploadToCloudinary(req.file.buffer);
+            file_lampiran = resultUpload.secure_url; // Link HTTPS yang aman dan tidak bakal kena blokir SSL!
         }
 
-        // JURUS ANTI-UNDEFINED MYSQL
         const finalUserId = user_id ?? null;
         const finalTglMulai = tanggal_mulai ?? null;
         const finalTglSelesai = tanggal_selesai ?? null;
         const finalKeterangan = keterangan ?? null;
         const finalFile = file_lampiran ?? null;
 
-        // Simpan ke MySQL
         const query = `INSERT INTO pengajuan_izin (user_id, jenis_izin, tanggal_mulai, tanggal_selesai, keterangan, file_lampiran) VALUES (?, 'sakit', ?, ?, ?, ?)`;
         await pool.execute(query, [finalUserId, finalTglMulai, finalTglSelesai, finalKeterangan, finalFile]);
         
         res.json({ success: true, message: 'Keterangan sakit berhasil dikirim.' });
     } catch (error) {
-        console.error('Error ajukanSakit ImgBB:', error);
-        res.status(500).json({ success: false, message: 'Server error saat memproses pengajuan sakit.' });
+        console.error('Error Cloudinary:', error);
+        res.status(500).json({ success: false, message: 'Gagal mengupload file ke Cloudinary.' });
     }
 };
 
