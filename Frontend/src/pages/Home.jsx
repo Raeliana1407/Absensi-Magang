@@ -59,12 +59,26 @@ export default function Home() {
       if (resStatus.ok) {
         const resultStatus = await resStatus.json();
         if (resultStatus.success) {
-          setShiftPhase(resultStatus.shiftPhase);
-          localStorage.setItem('shift_phase', resultStatus.shiftPhase);
+          
+          // 🔥 JURUS BODO AMAT: Paksa pakai memori HP kalau Vercel error baca tanggal 🔥
+          const localPhase = localStorage.getItem('shift_phase');
+          const localDate = localStorage.getItem('shift_date');
+          const isToday = localDate === new Date().toDateString();
+
+          // Kalau hari ini di HP kita udah absen, tapi server Vercel malah bilang 'idle' (error timezone),
+          // KITA BANTAH SERVERNYA! Tetap munculkan tombol kuning & merah!
+          let finalPhase = resultStatus.shiftPhase;
+          if (isToday && localPhase && localPhase !== 'idle' && resultStatus.shiftPhase === 'idle') {
+              finalPhase = localPhase; 
+          }
+
+          setShiftPhase(finalPhase);
+          localStorage.setItem('shift_phase', finalPhase);
           localStorage.setItem('shift_date', new Date().toDateString()); 
+          
           setTodayLogs(resultStatus.data || []);
           
-          // TAMBAHAN MISI 2: Tangkap jadwal dan ubah formatnya (dari "08:00:00" ke "08:00 AM")
+          // Tangkap jadwal
           if (resultStatus.jadwal) {
              const formatJadwal = (jamDB) => {
                 const [j, m] = jamDB.split(':');

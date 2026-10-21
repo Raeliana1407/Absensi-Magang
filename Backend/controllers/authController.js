@@ -20,6 +20,14 @@ const login = async (req, res) => {
 
         if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Password salah.' });
 
+        // 🔥 SATPAM AKTIVASI: Cek apakah akun masih pending / belum disetujui Admin 🔥
+        if (user.status === 'pending') {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Akun Anda belum diaktivasi oleh Admin. Silakan tunggu persetujuan.' 
+            });
+        }
+
         const token = jwt.sign(
             { id: user.id, role: user.role, divisi: user.divisi },
             process.env.JWT_SECRET,
@@ -35,6 +43,7 @@ const login = async (req, res) => {
         res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server.' });
     }
 };
+
 const ubahKataSandi = async (req, res) => {
     try {
         const { user_id, passwordLama, passwordBaru } = req.body;
@@ -71,6 +80,7 @@ const ubahKataSandi = async (req, res) => {
         res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server.' });
     }
 };
+
 // ==========================================
 // Fungsi Registrasi User Baru
 // ==========================================
