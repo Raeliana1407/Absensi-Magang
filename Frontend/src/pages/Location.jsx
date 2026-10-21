@@ -108,7 +108,7 @@ export default function Location() {
                 <span className={`w-1.5 h-1.5 rounded-full ${isLocating ? 'bg-slate-400' : inZone ? 'bg-emerald-500' : 'bg-rose-500'}`}></span> 
                 {isLocating ? 'LOCATING...' : inZone ? 'INSIDE AUTHORIZED ZONE' : 'OUTSIDE AUTHORIZED ZONE'}
              </div>
-             <h2 className="text-xl font-black text-[#0B1E46] tracking-tight">HQ Tech Park · Parepare</h2>
+             <h2 className="text-xl font-black text-[#0B1E46] tracking-tight">Kantor PLN UP3(persero) parepare</h2>
              <p className="text-xs text-slate-500 mt-0.5">Sistem Informasi Absensi Magang</p>
           </div>
           <div className="text-right">
@@ -182,7 +182,7 @@ export default function Location() {
                     </div>
                     <div>
                        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                          Kantor PLN UP3(persero) parepare
+                          Kantor PLN UP3(persero) Parepare
                        </h4>
                        <p className="text-[10px] text-slate-500 mt-0.5">Lokasi Utama Absensi Magang</p>
                     </div>

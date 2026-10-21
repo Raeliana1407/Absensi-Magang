@@ -1,9 +1,8 @@
 const pool = require('../config/db');
-
 const cloudinary = require('cloudinary').v2;
-const streamifier = require('streamifier'); // Bawaan multer/node, atau install jika perlu
+const streamifier = require('streamifier');
 
-// Konfigurasi Cloudinary (Masukkan data dari Dashboard Cloudinary Anda)
+// Konfigurasi Cloudinary yang Aman
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -30,18 +29,25 @@ const ajukanIzin = async (req, res) => {
     }
 };
 
-// Mengajukan Sakit (Upload ke Cloudinary)
+// Mengajukan Sakit (Upload ke Cloudinary + Kompresi Otomatis)
 const ajukanSakit = async (req, res) => {
     try {
         const { user_id, tanggal_mulai, tanggal_selesai, keterangan } = req.body;
         let file_lampiran = null;
 
         if (req.file) {
-            // Fungsi helper untuk upload buffer ke Cloudinary via Stream
             const uploadToCloudinary = (fileBuffer) => {
                 return new Promise((resolve, reject) => {
                     let stream = cloudinary.uploader.upload_stream(
-                        { folder: "absensi_magang" },
+                        { 
+                            // 🔥 FOLDER DIPISAH & FOTO DIKOMPRES OTOMATIS 🔥
+                            folder: "absensi_magang/surat_sakit",
+                            transformation: [
+                                { width: 1000, crop: "limit" }, 
+                                { quality: "auto" },            
+                                { fetch_format: "auto" }        
+                            ]
+                        },
                         (error, result) => {
                             if (result) {
                                 resolve(result);
@@ -55,7 +61,7 @@ const ajukanSakit = async (req, res) => {
             };
 
             const resultUpload = await uploadToCloudinary(req.file.buffer);
-            file_lampiran = resultUpload.secure_url; // Link HTTPS yang aman dan tidak bakal kena blokir SSL!
+            file_lampiran = resultUpload.secure_url; 
         }
 
         const finalUserId = user_id ?? null;
