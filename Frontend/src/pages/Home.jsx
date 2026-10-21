@@ -318,66 +318,30 @@ export default function Home() {
            </div>
         </div>
 
-        {/* Today's Activity Timeline (SEKARANG 100% DINAMIS) */}
-        <div>
-           <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                 Today's Activity 
-                 {todayLogs.length > 0 && (
-                   <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                     {todayLogs.length} logs
-                   </span>
-                 )}
-              </h3>
-              <a href="/timesheet" className="text-xs font-bold text-blue-600">View Full &gt;</a>
+        {/* Total Logged Time Card - Sekarang Dinamis untuk Days Present */}
+        <div className="bg-[#1E40AF] text-white p-5 rounded-3xl shadow-lg shadow-blue-900/20 mb-6">
+           <div className="flex justify-between items-start mb-2">
+              <span className="text-xs font-bold text-blue-200 tracking-wider">THIS MONTH</span>
+              <div className="bg-[#6EE7B7] text-[#064E3B] text-[10px] font-bold px-2 py-1 rounded-full">
+                 Active
+              </div>
+           </div>
+           
+           {/* Menampilkan total hari hadir bulan ini (diambil dari API Riwayat) */}
+           <div className="flex items-baseline gap-2 mb-4 mt-2">
+              <h2 className="text-4xl font-extrabold tracking-tight">{kehadiranBulanIni} Days</h2>
+              <span className="text-xs text-blue-200 font-medium">Logged Present</span>
            </div>
 
-           <div className="relative pl-4 border-l-2 border-slate-100 space-y-6">
-              
-              {todayLogs.length === 0 ? (
-                <p className="text-xs text-slate-400 font-medium pb-4">No activity recorded yet for today.</p>
-              ) : (
-                todayLogs.map((log) => {
-                  const style = getTimelineStyle(log.jenis_absen);
-                  return (
-                    <div key={log.id} className="relative">
-                       <div className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${style.bg}`}>
-                          <div className={`w-2 h-2 rounded-full ${style.dot}`}></div>
-                       </div>
-                       <div className="flex justify-between items-start">
-                          <div>
-                             <h4 className="text-sm font-bold text-slate-800">{style.title}</h4>
-                             <p className="text-[10px] text-slate-500 mt-0.5">{style.desc}</p>
-                          </div>
-                          <div className="text-right">
-                             <span className="text-xs font-bold text-slate-800">{formatTime(log.waktu_absen)}</span>
-                             <p className={`text-[10px] font-bold px-1.5 rounded mt-0.5 ${style.textColor}`}>
-                               {style.textStatus}
-                             </p>
-                          </div>
-                       </div>
-                    </div>
-                  );
-                })
-              )}
-
-              {/* Tampilkan Estimasi Pulang jika shift belum selesai */}
-              {shiftPhase !== 'completed' && (
-                <div className="relative opacity-50 pt-2">
-                   <div className="absolute -left-[21px] top-3 w-4 h-4 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center"></div>
-                   <div className="flex justify-between items-start">
-                      <div>
-                         <h4 className="text-sm font-bold text-slate-800">Est. Clock Out</h4>
-                         <p className="text-[10px] text-slate-500 mt-0.5">Scheduled end of shift</p>
-                      </div>
-                      <div className="text-right">
-                         <span className="text-xs font-bold text-slate-400">{shiftEnd}</span>
-                         <p className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 rounded mt-0.5">Pending</p>
-                      </div>
-                   </div>
-                </div>
-              )}
-
+           <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="bg-[#1E3A8A] p-3 rounded-xl">
+                 <p className="text-[10px] text-blue-200 mb-0.5">Today's Logs</p>
+                 <p className="text-sm font-bold">{todayLogs.length} Actions</p>
+              </div>
+              <div className="bg-[#1E3A8A] p-3 rounded-xl">
+                 <p className="text-[10px] text-blue-200 mb-0.5">Shift Status</p>
+                 <p className="text-sm font-bold capitalize">{shiftPhase}</p>
+              </div>
            </div>
         </div>
 
