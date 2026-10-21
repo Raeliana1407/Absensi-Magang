@@ -139,7 +139,7 @@ export default function PersetujuanIzin() {
 
                 {item.file_lampiran && (
                   <a 
-                    href={`https://absensi-magang-beta.vercel.app/uploads/${item.file_lampiran}`} 
+                    href={item.file_lampiran.startsWith('http') ? item.file_lampiran : `https://absensi-magang-beta.vercel.app/uploads/${item.file_lampiran}`} 
                     target="_blank" 
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 mb-4 hover:underline ml-2"
