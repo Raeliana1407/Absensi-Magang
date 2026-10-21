@@ -1,5 +1,16 @@
 const pool = require('../config/db');
+const { google } = require('googleapis'); // <-- TAMBAHKAN INI
+const stream = require('stream');
 
+// --- Setup Google Drive API ---
+const auth = new google.auth.GoogleAuth({
+    credentials: {
+        client_email: process.env.GDRIVE_CLIENT_EMAIL,
+        private_key: process.env.GDRIVE_PRIVATE_KEY ? process.env.GDRIVE_PRIVATE_KEY.replace(/\\n/g, '\n') : '',
+    },
+    scopes: ['https://www.googleapis.com/auth/drive.file'],
+});
+const drive = google.drive({ version: 'v3', auth });
 // Mengajukan Izin
 const ajukanIzin = async (req, res) => {
     try {
