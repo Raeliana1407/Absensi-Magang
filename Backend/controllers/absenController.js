@@ -15,7 +15,7 @@ function getWitaTime() {
     const second = String(witaDate.getSeconds()).padStart(2, '0');
 
     return {
-        // Dijamin 1.000.000% formatnya YYYY-MM-DD
+        // Dijamin 1.000.000% formatnya "YYYY-MM-DD"
         tanggal: `${year}-${month}-${day}`, 
         waktu: `${year}-${month}-${day} ${hour}:${minute}:${second}`,
         totalMenit: (witaDate.getHours() * 60) + witaDate.getMinutes()
@@ -40,18 +40,23 @@ const clockIn = async (req, res) => {
         const { user_id, latitude, longitude, jenis_absen } = req.body;
         const wita = getWitaTime();
         
-        // PERBAIKAN PENCARIAN DATE SQL
-        const checkQuery = `SELECT id FROM absensi WHERE user_id = ? AND jenis_absen = ? AND DATE_FORMAT(waktu_absen, '%Y-%m-%d') = ?`;
-        const [existing] = await pool.execute(checkQuery, [user_id, jenis_absen, wita.tanggal]);
+        // JURUS ANTI-BADAI 1: Jangan pakai SQL WHERE Date. 
+        // Tarik 5 data terakhir, lalu cek pakai fungsi Javascript (startsWith).
+        const [existing] = await pool.execute(`
+            SELECT id, jenis_absen, CAST(waktu_absen AS CHAR) as waktu_raw 
+            FROM absensi 
+            WHERE user_id = ? AND jenis_absen = ? 
+            ORDER BY waktu_absen DESC LIMIT 5
+        `, [user_id, jenis_absen]);
         
-        if (existing.length > 0) {
+        const alreadyDoneToday = existing.some(row => row.waktu_raw && row.waktu_raw.startsWith(wita.tanggal));
+        
+        if (alreadyDoneToday) {
             return res.status(400).json({ success: false, message: `Aksi ${jenis_absen} sudah dilakukan hari ini.` });
         }
 
         const [settingsRows] = await pool.execute('SELECT * FROM settings LIMIT 1');
-        if (settingsRows.length === 0) {
-             return res.status(500).json({ success: false, message: 'Admin belum mengatur konfigurasi sistem!' });
-        }
+        if (settingsRows.length === 0) return res.status(500).json({ success: false, message: 'Admin belum mengatur konfigurasi sistem!' });
         
         const settings = settingsRows[0];
         const distance = calculateDistance(parseFloat(settings.latitude), parseFloat(settings.longitude), latitude, longitude);
@@ -91,8 +96,10 @@ const clockIn = async (req, res) => {
             responseMessage = `Aksi ${jenis_absen} berhasil dicatat. Jarak: ${Math.round(distance)}m`;
         }
 
-        const query = `INSERT INTO absensi (user_id, jenis_absen, waktu_absen, latitude, longitude, status) VALUES (?, ?, ?, ?, ?, ?)`;
-        await pool.execute(query, [user_id, jenis_absen, wita.waktu, latitude, longitude, statusAbsen]);
+        await pool.execute(
+            `INSERT INTO absensi (user_id, jenis_absen, waktu_absen, latitude, longitude, status) VALUES (?, ?, ?, ?, ?, ?)`, 
+            [user_id, jenis_absen, wita.waktu, latitude, longitude, statusAbsen]
+        );
 
         if (!isSuccess) return res.status(400).json({ success: false, message: responseMessage });
         res.json({ success: true, message: responseMessage });
@@ -105,50 +112,49 @@ const clockIn = async (req, res) => {
 // 2. Mengambil Riwayat Absen
 const getRiwayat = async (req, res) => {
     try {
-        const userId = req.params.user_id;
-        const query = `
+        const [rows] = await pool.execute(`
             SELECT id, jenis_absen, 
             DATE_FORMAT(waktu_absen, '%Y-%m-%dT%H:%i:%s') as waktu_absen, 
             status 
             FROM absensi 
             WHERE user_id = ? 
             ORDER BY waktu_absen DESC
-        `;
-        const [rows] = await pool.execute(query, [userId]);
+        `, [req.params.user_id]);
         res.json({ success: true, data: rows });
     } catch (error) {
-        console.error('Error getRiwayat:', error);
-        res.status(500).json({ success: false, message: 'Gagal mengambil data riwayat.' });
+        res.status(500).json({ success: false, message: 'Gagal mengambil riwayat.' });
     }
 };
 
 // 3. Mengecek Status Absen Hari Ini
 const cekStatusHariIni = async (req, res) => {
     try {
-        const { id } = req.params; 
         const wita = getWitaTime();
-
         const [settingsRows] = await pool.execute('SELECT jam_masuk, jam_pulang FROM settings LIMIT 1');
         const jadwal = settingsRows.length > 0 ? settingsRows[0] : { jam_masuk: '08:00:00', jam_pulang: '16:00:00' };
 
-        // PERBAIKAN PENCARIAN DATE SQL
-        const query = `
+        // JURUS ANTI-BADAI 2: Ambil 15 log terakhir saja, JANGAN pakai filter tanggal di SQL.
+        const [rows] = await pool.execute(`
             SELECT id, jenis_absen, 
+            CAST(waktu_absen AS CHAR) as waktu_raw,
             DATE_FORMAT(waktu_absen, '%Y-%m-%dT%H:%i:%s') as waktu_absen, 
             status 
             FROM absensi 
-            WHERE user_id = ? AND DATE_FORMAT(waktu_absen, '%Y-%m-%d') = ? 
-            ORDER BY waktu_absen ASC
-        `;
-        const [rows] = await pool.execute(query, [id, wita.tanggal]);
+            WHERE user_id = ? 
+            ORDER BY waktu_absen DESC 
+            LIMIT 15
+        `, [req.params.id]);
 
-        if (rows.length === 0) {
+        // Biarkan Javascript yang memfilter teks tanggalnya secara murni. (Pasti akurat!)
+        const todayLogsDesc = rows.filter(row => row.waktu_raw && row.waktu_raw.startsWith(wita.tanggal));
+        const todayLogsAsc = todayLogsDesc.reverse(); // Balik jadi urutan lama -> baru untuk tampilan UI
+
+        if (todayLogsAsc.length === 0) {
             return res.json({ success: true, shiftPhase: 'idle', data: [], jadwal: jadwal });
         }
 
-        const lastLog = rows[rows.length - 1];
+        const lastLog = todayLogsAsc[todayLogsAsc.length - 1];
         let currentPhase = 'idle';
-        
         if (lastLog.jenis_absen === 'masuk' || lastLog.jenis_absen === 'istirahat_masuk') {
             currentPhase = 'working';
         } else if (lastLog.jenis_absen === 'istirahat_keluar') {
@@ -157,7 +163,7 @@ const cekStatusHariIni = async (req, res) => {
             currentPhase = 'completed';
         }
 
-        res.json({ success: true, shiftPhase: currentPhase, data: rows, jadwal: jadwal });
+        res.json({ success: true, shiftPhase: currentPhase, data: todayLogsAsc, jadwal: jadwal });
     } catch (error) {
         console.error('Error cek status:', error);
         res.status(500).json({ success: false, message: 'Gagal mengecek status hari ini.' });
