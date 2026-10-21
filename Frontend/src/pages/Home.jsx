@@ -267,35 +267,28 @@ export default function Home() {
              <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> {statusMessage}
           </p>
           
-          {shiftPhase === 'idle' && (
-            <button onClick={() => handleAbsen('masuk', 'working')} disabled={isClockingIn} className="w-full mt-4 bg-[#1E3A8A] text-white font-bold py-3.5 rounded-full text-lg shadow-lg shadow-blue-900/20 active:scale-95 transition-all flex justify-center items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
-              {isClockingIn ? 'Processing...' : 'Clock In'}
-            </button>
-          )}
-
-          {shiftPhase === 'working' && (
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => handleAbsen('istirahat_keluar', 'break')} disabled={isClockingIn} className="w-1/2 bg-amber-500 text-white font-bold py-3.5 rounded-full text-sm shadow-md shadow-amber-500/20 active:scale-95 transition-all">
-                ☕ Take Break
+          {/*SEMUA TOMBOL DIBUKA TERUS KARENA STATE BUG DI VERCEL!*/}
+          <div className="flex flex-col gap-3 mt-5">
+              {/* 1. Tombol Clock In (Selalu Muncul) */}
+              <button onClick={() => handleAbsen('masuk', 'working')} disabled={isClockingIn} className="w-full bg-[#1E3A8A] text-white font-bold py-3.5 rounded-full text-lg shadow-lg shadow-blue-900/20 active:scale-95 transition-all flex justify-center items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+                {isClockingIn ? 'Processing...' : 'Clock In'}
               </button>
-              <button onClick={() => handleAbsen('pulang', 'completed')} disabled={isClockingIn} className="w-1/2 bg-rose-600 text-white font-bold py-3.5 rounded-full text-sm shadow-md shadow-rose-600/20 active:scale-95 transition-all">
-                👋 Clock Out
-              </button>
-            </div>
-          )}
 
-          {shiftPhase === 'break' && (
-            <button onClick={() => handleAbsen('istirahat_masuk', 'working')} disabled={isClockingIn} className="w-full mt-4 bg-emerald-500 text-white font-bold py-3.5 rounded-full text-lg shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex justify-center items-center gap-2">
-              {isClockingIn ? 'Processing...' : 'End Break & Work'}
-            </button>
-          )}
-
-          {shiftPhase === 'completed' && (
-            <div className="w-full mt-4 bg-slate-100 text-slate-500 font-bold py-3.5 rounded-full text-sm border-2 border-slate-200 border-dashed flex justify-center items-center">
-              ✓ Shift Completed for Today
-            </div>
-          )}
+              {/* 2. Tombol Istirahat & Pulang (Selalu Muncul Berdampingan) */}
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => handleAbsen(shiftPhase === 'break' ? 'istirahat_masuk' : 'istirahat_keluar', shiftPhase === 'break' ? 'working' : 'break')} 
+                  disabled={isClockingIn} 
+                  className={`w-1/2 text-white font-bold py-3.5 rounded-full text-sm shadow-md active:scale-95 transition-all ${shiftPhase === 'break' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}
+                >
+                  {shiftPhase === 'break' ? '🔙 End Break' : '☕ Take Break'}
+                </button>
+                <button onClick={() => handleAbsen('pulang', 'completed')} disabled={isClockingIn} className="w-1/2 bg-rose-600 text-white font-bold py-3.5 rounded-full text-sm shadow-md shadow-rose-600/20 active:scale-95 transition-all">
+                  👋 Clock Out
+                </button>
+              </div>
+          </div>
         </div>
 
         {/* Total Logged Time Card - Sekarang Dinamis untuk Days Present */}
