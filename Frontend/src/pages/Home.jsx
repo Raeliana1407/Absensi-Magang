@@ -236,27 +236,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Map Card */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6">
-          <div className="w-full h-24 bg-blue-50 rounded-xl mb-3 relative overflow-hidden flex items-center justify-center border border-blue-100">
-            <div className="absolute top-2 right-2 bg-white/80 backdrop-blur text-[10px] px-2 py-1 rounded-md text-slate-600 font-bold flex items-center gap-1 shadow-sm">
-              ⌖ ±{accuracy}m accuracy
-            </div>
-            <div className="relative text-emerald-600">
-              <svg className="w-8 h-8 drop-shadow-md" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            </div>
-          </div>
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="font-bold text-slate-800 text-sm">HQ Tech Park</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">Office Geofence Zone</p>
-            </div>
-            <div className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1">
-               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In Zone
-            </div>
-          </div>
-        </div>
-
         {/* Clock & Action */}
         <div className="text-center mb-6">
           <div className="text-5xl font-extrabold text-[#0B1E46] tracking-tight">
