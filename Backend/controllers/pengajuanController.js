@@ -15,19 +15,57 @@ const ajukanIzin = async (req, res) => {
     }
 };
 
-// Mengajukan Sakit (Dengan File Lampiran)
+// Mengajukan Sakit (Upload ke Google Drive)
 const ajukanSakit = async (req, res) => {
     try {
         const { user_id, tanggal_mulai, tanggal_selesai, keterangan } = req.body;
-        const file_lampiran = req.file ? req.file.filename : null; 
+        let file_lampiran = null;
+
+        if (req.file) {
+            // Ubah buffer dari multer menjadi stream
+            const bufferStream = new stream.PassThrough();
+            bufferStream.end(req.file.buffer);
+
+            // Upload ke Google Drive
+            const driveResponse = await drive.files.create({
+                requestBody: {
+                    name: `Sakit_${user_id}_${Date.now()}_${req.file.originalname}`,
+                    parents: [process.env.GDRIVE_FOLDER_SAKIT],
+                },
+                media: {
+                    mimeType: req.file.mimetype,
+                    body: bufferStream,
+                },
+                fields: 'id, webViewLink',
+            });
+
+            // Ambil link file dari Google Drive (Gunakan || null untuk jaga-jaga Drive gagal balikin link)
+            file_lampiran = driveResponse.data.webViewLink || null;
+            
+            // Opsional: Buat file bisa dilihat siapa saja (Public View)
+            await drive.permissions.create({
+                fileId: driveResponse.data.id,
+                requestBody: { role: 'reader', type: 'anyone' }
+            });
+        }
+
+        // 🔥 JURUS ANTI-UNDEFINED 🔥
+        // Jika ada data dari req.body yang undefined, otomatis diubah jadi null
+        const finalUserId = user_id ?? null;
+        const finalTglMulai = tanggal_mulai ?? null;
+        const finalTglSelesai = tanggal_selesai ?? null;
+        const finalKeterangan = keterangan ?? null;
+        const finalFile = file_lampiran ?? null;
 
         const query = `INSERT INTO pengajuan_izin (user_id, jenis_izin, tanggal_mulai, tanggal_selesai, keterangan, file_lampiran) VALUES (?, 'sakit', ?, ?, ?, ?)`;
-        await pool.execute(query, [user_id, tanggal_mulai, tanggal_selesai, keterangan, file_lampiran]);
+        
+        // Masukkan variabel yang sudah dipastikan aman dari undefined
+        await pool.execute(query, [finalUserId, finalTglMulai, finalTglSelesai, finalKeterangan, finalFile]);
         
         res.json({ success: true, message: 'Keterangan sakit berhasil dikirim.' });
     } catch (error) {
-        console.error('Error ajukanSakit:', error);
-        res.status(500).json({ success: false, message: 'Server error saat mengirim data sakit.' });
+        console.error('Error ajukanSakit Drive:', error);
+        res.status(500).json({ success: false, message: 'Server error saat mengirim data ke Drive.' });
     }
 };
 // Menampilkan daftar pengajuan yang masih 'pending' (Untuk Pembimbing)
