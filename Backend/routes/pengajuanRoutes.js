@@ -7,7 +7,8 @@ const {
     getPengajuanPending, 
     updateStatusPengajuan, 
     getRiwayatPengajuanUser, 
-    getRiwayatPembimbing 
+    getRiwayatPembimbing,
+    akhiriIzinLebihAwal 
 } = require('../controllers/pengajuanController');
 
 // 🔥 KONFIGURASI ANTI-ERROR VERCEL (MEMORY STORAGE) 🔥
@@ -26,5 +27,6 @@ router.get('/pending', getPengajuanPending);
 router.put('/status/:id', updateStatusPengajuan);
 router.get('/riwayat/:user_id', getRiwayatPengajuanUser);
 router.get('/riwayat-pembimbing/:pembimbing_id', getRiwayatPembimbing);
+router.put('/akhiri-izin/:id', akhiriIzinLebihAwal);
 
 module.exports = router;

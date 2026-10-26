@@ -135,5 +135,22 @@ const getRiwayatPembimbing = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error memuat riwayat.' });
     }
 };
+// Mengakhiri izin lebih awal (set tanggal_selesai ke HARI INI)
+const akhiriIzinLebihAwal = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Ambil tanggal hari ini format YYYY-MM-DD sesuai zona waktu lokal
+        const today = new Date().toLocaleDateString('en-CA'); 
+        
+        const query = `UPDATE pengajuan_izin SET tanggal_selesai = ? WHERE id = ? AND status = 'disetujui'`;
+        await pool.execute(query, [today, id]);
+        
+        res.json({ success: true, message: 'Izin berhasil diselesaikan hari ini.' });
+    } catch (error) {
+        console.error("Error akhiriIzin:", error);
+        res.status(500).json({ success: false, message: 'Gagal mengupdate tanggal izin.' });
+    }
+};
 
-module.exports = { ajukanIzin, ajukanSakit, getPengajuanPending, updateStatusPengajuan, getRiwayatPengajuanUser, getRiwayatPembimbing };
+module.exports = { ajukanIzin, ajukanSakit, getPengajuanPending, updateStatusPengajuan, getRiwayatPengajuanUser, getRiwayatPembimbing, akhiriIzinLebihAwal };
