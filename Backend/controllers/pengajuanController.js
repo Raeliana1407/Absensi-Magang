@@ -135,22 +135,21 @@ const getRiwayatPembimbing = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error memuat riwayat.' });
     }
 };
-// Mengakhiri izin lebih awal (set tanggal_selesai ke HARI INI)
+// Mengakhiri izin lebih awal (set tanggal_selesai ke KEMARIN agar hari ini bisa absen)
 const akhiriIzinLebihAwal = async (req, res) => {
     try {
         const { id } = req.params;
         
-        // Ambil tanggal hari ini format YYYY-MM-DD sesuai zona waktu lokal
-        const today = new Date().toLocaleDateString('en-CA'); 
+        // 🔥 TRIK HR SYSTEM: Kita ubah tanggal_selesai jadi KEMARIN (H-1).
+        // Pakai DATE_SUB dari MySQL biar aman dari perbedaan zona waktu server.
+        const query = `UPDATE pengajuan_izin SET tanggal_selesai = DATE_SUB(CURDATE(), INTERVAL 1 DAY) WHERE id = ? AND status = 'disetujui'`;
         
-        const query = `UPDATE pengajuan_izin SET tanggal_selesai = ? WHERE id = ? AND status = 'disetujui'`;
-        await pool.execute(query, [today, id]);
+        await pool.execute(query, [id]);
         
-        res.json({ success: true, message: 'Izin berhasil diselesaikan hari ini.' });
+        res.json({ success: true, message: 'Izin diakhiri! Anak magang sudah bisa absen hari ini.' });
     } catch (error) {
         console.error("Error akhiriIzin:", error);
         res.status(500).json({ success: false, message: 'Gagal mengupdate tanggal izin.' });
     }
 };
-
 module.exports = { ajukanIzin, ajukanSakit, getPengajuanPending, updateStatusPengajuan, getRiwayatPengajuanUser, getRiwayatPembimbing, akhiriIzinLebihAwal };

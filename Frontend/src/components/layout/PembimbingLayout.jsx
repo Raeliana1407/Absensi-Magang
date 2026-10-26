@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 
 export default function PembimbingLayout() {
@@ -6,6 +6,31 @@ export default function PembimbingLayout() {
   
   // Fungsi cek rute aktif
   const isActive = (path) => location.pathname.includes(path);
+
+  // 🔥 STATE & FUNGSI CEK PENDING APPROVALS 🔥
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const cekPending = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        const res = await fetch('https://absensi-magang-beta.vercel.app/api/pengajuan/pending', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          setPendingCount(data.data.length); // Hitung jumlah data yang statusnya 'pending'
+        }
+      } catch (error) {
+        console.error("Gagal mengambil notif pending:", error);
+      }
+    };
+
+    cekPending();
+  }, [location.pathname]); // Akan mengecek ulang setiap kali pembimbing pindah halaman
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800">
@@ -38,7 +63,8 @@ export default function PembimbingLayout() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <span className="text-sm font-bold">Approvals</span>
             </div>
-            {!isActive('/persetujuan') && <span className="w-2 h-2 bg-rose-500 rounded-full"></span>}
+            {/* 🔥 Hanya muncul jika BUKAN di halaman persetujuan DAN ADA data pending 🔥 */}
+            {!isActive('/persetujuan') && pendingCount > 0 && <span className="w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>}
           </Link>
 
           <Link to="/pembimbing/laporan" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${isActive('/laporan') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
@@ -47,7 +73,7 @@ export default function PembimbingLayout() {
           </Link>
         </nav>
 
-        {/* SETTINGS DESKTOP - Disimpan di bagian bawah sidebar */}
+        {/* SETTINGS DESKTOP */}
         <div className="p-4 border-t border-slate-100">
           <Link to="/pembimbing/settings" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${isActive('/settings') ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,7 +110,8 @@ export default function PembimbingLayout() {
          <Link to="/pembimbing/persetujuan" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/persetujuan') ? 'text-[#1E40AF]' : 'text-slate-400 hover:text-slate-600'}`}>
             <div className="relative">
               <svg className="w-6 h-6" fill={isActive('/persetujuan') ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              {!isActive('/persetujuan') && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full"></span>}
+              {/* 🔥 Hanya muncul jika BUKAN di halaman persetujuan DAN ADA data pending 🔥 */}
+              {!isActive('/persetujuan') && pendingCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full animate-pulse"></span>}
             </div>
             <span className="text-[10px] font-bold">Approvals</span>
          </Link>
@@ -94,7 +121,6 @@ export default function PembimbingLayout() {
             <span className="text-[10px] font-bold">Reports</span>
          </Link>
 
-         {/* SETTINGS MOBILE (Menggantikan Profile) */}
          <Link to="/pembimbing/settings" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/settings') ? 'text-[#1E40AF]' : 'text-slate-400 hover:text-slate-600'}`}>
             <svg className="w-6 h-6" fill={isActive('/settings') ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
