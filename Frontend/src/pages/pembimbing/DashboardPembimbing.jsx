@@ -3,13 +3,16 @@ import React, { useState, useEffect } from 'react';
 export default function DashboardPembimbing() {
   const [bimbingan, setBimbingan] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [filterActive, setFilterActive] = useState('Semua');
+  // 1. TAMBAH STATE UNTUK SEARCH
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Ambil data Pembimbing yang sedang login dari localStorage
   const userDataString = localStorage.getItem('user');
   const user = userDataString ? JSON.parse(userDataString) : { id: 1, nama: 'Dr. Pembimbing' };
 
-  // Tanggal Dinamis (Format: Kamis, 24 Oktober 2024)
+  // Tanggal Dinamis
   const todayFormatted = new Date().toLocaleDateString('id-ID', { 
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
   });
@@ -19,7 +22,6 @@ export default function DashboardPembimbing() {
     const fetchDashboard = async () => {
       try {
         const token = localStorage.getItem('token');
-        // Panggil route yang baru saja kita buat dengan parameter user.id pembimbing
         const response = await fetch(`https://absensi-magang-beta.vercel.app/api/pembimbing/dashboard-hari-ini/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -46,13 +48,19 @@ export default function DashboardPembimbing() {
 
   const hadirPercent = totalBimbingan ? Math.round(((countOnTrack + countLate) / totalBimbingan) * 100) : 0;
 
-  // --- LOGIKA FILTER ---
+  // 2. LOGIKA FILTER & SEARCH DIGABUNG
   const filteredData = bimbingan.filter((mhs) => {
-    if (filterActive === 'Semua') return true;
-    if (filterActive === 'In-Zone') return mhs.status === 'ontrack';
-    if (filterActive === 'Terlambat') return mhs.status === 'late';
-    if (filterActive === 'Izin Sakit') return mhs.status === 'absent';
-    return true;
+    // Cek apakah nama mahasiswa mengandung kata kunci pencarian (Case-insensitive)
+    const matchesSearch = mhs.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Cek apakah mahasiswa sesuai dengan tab filter yang aktif
+    let matchesFilter = true;
+    if (filterActive === 'In-Zone') matchesFilter = mhs.status === 'ontrack';
+    if (filterActive === 'Terlambat') matchesFilter = mhs.status === 'late';
+    if (filterActive === 'Izin Sakit') matchesFilter = mhs.status === 'absent';
+
+    // Harus lolos kriteria pencarian DAN filter kategori
+    return matchesSearch && matchesFilter;
   });
 
   return (
@@ -93,7 +101,7 @@ export default function DashboardPembimbing() {
       </div>
 
       {/* =========================================
-          2. STATS CARDS SECTION (Dinamis)
+          2. STATS CARDS SECTION
       ============================================= */}
       <div className="grid grid-cols-3 gap-3 md:gap-6">
         <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -134,7 +142,16 @@ export default function DashboardPembimbing() {
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-100">
          <div className="w-full md:w-1/3 flex items-center bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
             <svg className="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input type="text" placeholder="Cari nama bimbingan..." className="bg-transparent border-none outline-none text-sm w-full font-medium" />
+            
+            {/* 3. INPUT SEARCH DISAMBUNGKAN KE STATE */}
+            <input 
+              type="text" 
+              placeholder="Cari nama bimbingan..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none outline-none text-sm w-full font-medium" 
+            />
+
          </div>
          <div className="w-full md:w-auto flex overflow-x-auto gap-2 pb-1 md:pb-0 hide-scrollbar">
             {['Semua', 'In-Zone', 'Terlambat', 'Izin Sakit'].map((tab) => (
@@ -154,7 +171,7 @@ export default function DashboardPembimbing() {
       </div>
 
       {/* =========================================
-          4. LIST MAHASISWA (Dinamis dari DB)
+          4. LIST MAHASISWA
       ============================================= */}
       {loading ? (
          <div className="py-12 flex justify-center">
@@ -162,7 +179,7 @@ export default function DashboardPembimbing() {
          </div>
       ) : filteredData.length === 0 ? (
          <div className="py-12 text-center text-slate-500 font-bold bg-white rounded-2xl border border-slate-100">
-            Tidak ada anak bimbingan untuk kategori "{filterActive}".
+            Tidak ada data yang cocok dengan pencarian / filter Anda.
          </div>
       ) : (
         <>
@@ -185,7 +202,7 @@ export default function DashboardPembimbing() {
                         <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">{mhs.img}</div>
                         <div>
                           <p className="font-bold text-slate-800 text-sm">{mhs.name}</p>
-                          <p className="text-xs text-slate-500">{mhs.nim} • {mhs.role}</p>
+                          <p className="text-xs text-slate-500">{mhs.nim} {mhs.role}</p>
                         </div>
                       </div>
                     </td>
