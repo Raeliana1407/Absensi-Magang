@@ -32,9 +32,9 @@ export default function AdminLayout() {
         <div className="p-4 mt-auto border-t border-slate-800">
           <button 
             onClick={() => {
-              if(window.confirm('Yakin ingin keluar?')) {
+              if(window.confirm('Yakin ingin keluar?')) { 
                 localStorage.clear();
-                window.location.href = '/login';
+                window.location.href = '/';
               }
             }}
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl transition-colors text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
