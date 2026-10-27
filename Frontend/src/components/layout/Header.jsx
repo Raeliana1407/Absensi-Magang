@@ -34,7 +34,7 @@ export default function Header({ pageTitle }) {
         
         {/* Tombol Profil yang bisa diklik */}
         <button 
-          onClick={() => navigate('/profil')} // Sesuaikan dengan route profil Anda
+          onClick={() => navigate('/profile')} // Sesuaikan dengan route profil Anda
           className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black text-lg border-2 border-white shadow-sm overflow-hidden hover:scale-105 active:scale-95 transition-all"
         >
           {user.foto_profil ? (

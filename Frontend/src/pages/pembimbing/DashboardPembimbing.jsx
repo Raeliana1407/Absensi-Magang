@@ -3,16 +3,12 @@ import React, { useState, useEffect } from 'react';
 export default function DashboardPembimbing() {
   const [bimbingan, setBimbingan] = useState([]);
   const [loading, setLoading] = useState(true);
-  
   const [filterActive, setFilterActive] = useState('Semua');
-  // 1. TAMBAH STATE UNTUK SEARCH
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Ambil data Pembimbing yang sedang login dari localStorage
   const userDataString = localStorage.getItem('user');
   const user = userDataString ? JSON.parse(userDataString) : { id: 1, nama: 'Dr. Pembimbing' };
 
-  // Tanggal Dinamis
   const todayFormatted = new Date().toLocaleDateString('id-ID', { 
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
   });
@@ -40,35 +36,25 @@ export default function DashboardPembimbing() {
     if (user.id) fetchDashboard();
   }, [user.id]);
 
-  // --- KALKULASI STATISTIK OTOMATIS ---
   const totalBimbingan = bimbingan.length;
   const countOnTrack = bimbingan.filter(b => b.status === 'ontrack').length;
   const countLate = bimbingan.filter(b => b.status === 'late').length;
   const countAbsent = bimbingan.filter(b => b.status === 'absent').length;
-
   const hadirPercent = totalBimbingan ? Math.round(((countOnTrack + countLate) / totalBimbingan) * 100) : 0;
 
-  // 2. LOGIKA FILTER & SEARCH DIGABUNG
   const filteredData = bimbingan.filter((mhs) => {
-    // Cek apakah nama mahasiswa mengandung kata kunci pencarian (Case-insensitive)
     const matchesSearch = mhs.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Cek apakah mahasiswa sesuai dengan tab filter yang aktif
     let matchesFilter = true;
     if (filterActive === 'In-Zone') matchesFilter = mhs.status === 'ontrack';
     if (filterActive === 'Terlambat') matchesFilter = mhs.status === 'late';
     if (filterActive === 'Izin Sakit') matchesFilter = mhs.status === 'absent';
-
-    // Harus lolos kriteria pencarian DAN filter kategori
     return matchesSearch && matchesFilter;
   });
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
       
-      {/* =========================================
-          1. HEADER SECTION
-      ============================================= */}
+      {/* 1. HEADER SECTION */}
       <div className="hidden md:flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-black text-slate-800">Selamat Pagi, {user.nama}</h1>
@@ -100,9 +86,7 @@ export default function DashboardPembimbing() {
          </div>
       </div>
 
-      {/* =========================================
-          2. STATS CARDS SECTION
-      ============================================= */}
+      {/* 2. STATS CARDS SECTION */}
       <div className="grid grid-cols-3 gap-3 md:gap-6">
         <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
           <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total Hadir / On-Track</p>
@@ -120,9 +104,6 @@ export default function DashboardPembimbing() {
           <div className="flex items-baseline gap-1 md:gap-2">
             <h2 className="text-3xl md:text-5xl font-black text-amber-500">{countLate}</h2>
           </div>
-          <div className="mt-3 inline-block bg-amber-50 text-amber-600 text-[10px] md:text-xs font-bold px-2 py-1 rounded-md w-fit">
-            Perlu dicek
-          </div>
         </div>
 
         <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -130,20 +111,13 @@ export default function DashboardPembimbing() {
           <div className="flex items-baseline gap-1 md:gap-2">
             <h2 className="text-3xl md:text-5xl font-black text-rose-500">{countAbsent}</h2>
           </div>
-          <div className="mt-3 inline-block bg-rose-50 text-rose-600 text-[10px] md:text-xs font-bold px-2 py-1 rounded-md w-fit">
-            Surat Lampir
-          </div>
         </div>
       </div>
 
-      {/* =========================================
-          3. FILTER & SEARCH
-      ============================================= */}
+      {/* 3. FILTER & SEARCH */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-100">
          <div className="w-full md:w-1/3 flex items-center bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
             <svg className="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            
-            {/* 3. INPUT SEARCH DISAMBUNGKAN KE STATE */}
             <input 
               type="text" 
               placeholder="Cari nama bimbingan..." 
@@ -151,7 +125,6 @@ export default function DashboardPembimbing() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-sm w-full font-medium" 
             />
-
          </div>
          <div className="w-full md:w-auto flex overflow-x-auto gap-2 pb-1 md:pb-0 hide-scrollbar">
             {['Semua', 'In-Zone', 'Terlambat', 'Izin Sakit'].map((tab) => (
@@ -170,9 +143,7 @@ export default function DashboardPembimbing() {
          </div>
       </div>
 
-      {/* =========================================
-          4. LIST MAHASISWA
-      ============================================= */}
+      {/* 4. LIST MAHASISWA */}
       {loading ? (
          <div className="py-12 flex justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -199,7 +170,20 @@ export default function DashboardPembimbing() {
                   <tr key={mhs.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">{mhs.img}</div>
+                        
+                        {/* 🔥 BAGIAN FOTO PROFIL DINAMIS (DESKTOP) 🔥 */}
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700 overflow-hidden border border-slate-200">
+                          {mhs.foto_profil ? (
+                            <img 
+                              src={mhs.foto_profil.startsWith('http') ? mhs.foto_profil : `https://absensi-magang-beta.vercel.app/uploads/${mhs.foto_profil}`} 
+                              alt={mhs.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            mhs.img
+                          )}
+                        </div>
+
                         <div>
                           <p className="font-bold text-slate-800 text-sm">{mhs.name}</p>
                           <p className="text-xs text-slate-500">{mhs.nim} {mhs.role}</p>
@@ -211,6 +195,7 @@ export default function DashboardPembimbing() {
                       <p className={`text-xs mt-0.5 font-medium ${mhs.status === 'late' ? 'text-amber-500' : mhs.status === 'absent' ? 'text-rose-500' : mhs.status === 'belum_absen' ? 'text-slate-400' : 'text-emerald-500'}`}>{mhs.timeStatus}</p>
                     </td>
                     <td className="p-5">
+                      {/* 🔥 BAGIAN LOKASI DINAMIS 🔥 */}
                       <p className="text-sm font-bold text-slate-700">{mhs.loc}</p>
                       <div className="flex items-center gap-1 mt-1">
                         <div className={`w-1.5 h-1.5 rounded-full ${mhs.status === 'absent' || mhs.status === 'belum_absen' ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
@@ -233,10 +218,20 @@ export default function DashboardPembimbing() {
               <div key={mhs.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600 relative">
-                      {mhs.img}
-                      <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${mhs.status === 'absent' || mhs.status === 'belum_absen' ? 'bg-slate-400' : mhs.status === 'late' ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+                    
+                    {/* 🔥 BAGIAN FOTO PROFIL DINAMIS (MOBILE) 🔥 */}
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700 relative overflow-hidden border border-slate-200">
+                      {mhs.foto_profil ? (
+                        <img 
+                          src={mhs.foto_profil.startsWith('http') ? mhs.foto_profil : `https://absensi-magang-beta.vercel.app/uploads/${mhs.foto_profil}`} 
+                          alt={mhs.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        mhs.img
+                      )}
                     </div>
+
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{mhs.name}</p>
                       <p className="text-[10px] text-slate-500">{mhs.role}</p>
@@ -250,27 +245,11 @@ export default function DashboardPembimbing() {
                 <div className="bg-slate-50 p-3 rounded-xl mb-3">
                   <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    {/* 🔥 BAGIAN LOKASI DINAMIS 🔥 */}
                     {mhs.loc}
                   </p>
                   <p className="text-[11px] text-slate-500 mt-1 ml-5 truncate">{mhs.activity}</p>
                 </div>
-                
-                {mhs.status === 'absent' ? (
-                  <button className="w-full py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                    Unduh Surat
-                  </button>
-                ) : mhs.status === 'late' ? (
-                  <button className="w-full py-2 bg-amber-50 text-amber-600 text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-amber-100">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Tinjau Keterlambatan
-                  </button>
-                ) : (
-                  <button className="w-full py-2 bg-blue-50 text-blue-600 text-xs font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-blue-100">
-                    Lihat Detail
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                  </button>
-                )}
               </div>
             ))}
           </div>

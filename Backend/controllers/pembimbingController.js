@@ -31,7 +31,7 @@ const getDetailMahasiswa = async (req, res) => {
         const [userInfo] = await pool.execute('SELECT nama, divisi, email FROM users WHERE id = ?', [id]);
         if (userInfo.length === 0) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
 
-        // 2. Tarik riwayat Absensi (Pakai try-catch terpisah biar kebal error)
+        // 2. Tarik riwayat Absensi
         let absen = [];
         try {
             const queryAbsen = `
@@ -51,10 +51,9 @@ const getDetailMahasiswa = async (req, res) => {
             console.error("Gagal menarik data absensi:", err.message);
         }
 
-        // 3. Tarik riwayat Logbook (Pakai try-catch terpisah juga)
+        // 3. Tarik riwayat Logbook
         let logbook = [];
         try {
-            // Karena tabel lu nggak punya kolom 'status', kita paksa buat kolom bayangan 'Menunggu Review'
             const queryLogbook = `
                 SELECT 
                     DATE(created_at) AS tanggal, 
@@ -70,7 +69,6 @@ const getDetailMahasiswa = async (req, res) => {
             console.error("Gagal menarik data logbook:", err.message);
         }
 
-        // 4. Kirim hasil akhirnya ke React
         res.json({ 
             success: true, 
             data: {
@@ -84,6 +82,7 @@ const getDetailMahasiswa = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error: ' + error.message });
     }
 };
+
 // ==========================================
 // 4. Fungsi Mengambil Status Absen Hari Ini (Untuk Dashboard)
 // ==========================================
@@ -91,7 +90,8 @@ const getDashboardHariIni = async (req, res) => {
     try {
         const { pembimbing_id } = req.params;
 
-        const queryUsers = `SELECT id, nama, divisi FROM users WHERE pembimbing_id = ? AND role = 'magang' ORDER BY nama ASC`;
+        // 🔥 PERBAIKAN 1: Tambahkan 'foto_profil' di query users 🔥
+        const queryUsers = `SELECT id, nama, divisi, foto_profil FROM users WHERE pembimbing_id = ? AND role = 'magang' ORDER BY nama ASC`;
         const [users] = await pool.execute(queryUsers, [pembimbing_id]);
 
         if (users.length === 0) {
@@ -101,7 +101,6 @@ const getDashboardHariIni = async (req, res) => {
         const userIds = users.map(u => u.id);
         const placeholders = userIds.map(() => '?').join(',');
 
-        // PERBAIKAN: Ganti 'lokasi' menjadi 'latitude, longitude' sesuai dengan tabel Anda
         const queryAbsen = `
             SELECT user_id, waktu_absen, status, latitude, longitude 
             FROM absensi 
@@ -117,6 +116,15 @@ const getDashboardHariIni = async (req, res) => {
             AND status = 'disetujui' AND user_id IN (${placeholders})
         `;
         const [izin] = await pool.execute(queryIzin, userIds);
+
+        // 🔥 PERBAIKAN 2: Ambil 'nama_lokasi' dari tabel settings 🔥
+        const querySettings = `SELECT nama_lokasi FROM settings LIMIT 1`;
+        const [settings] = await pool.execute(querySettings);
+        
+        // Kalau data nama_lokasi kosong di DB, kasih nilai fallback sementara
+        const namaLokasiUtama = settings.length > 0 && settings[0].nama_lokasi 
+            ? settings[0].nama_lokasi 
+            : 'Kantor Pusat / HQ';
 
         const bimbinganList = users.map(u => {
             const absenHariIni = absen.find(a => a.user_id === u.id);
@@ -143,8 +151,8 @@ const getDashboardHariIni = async (req, res) => {
                 
                 timeStatus = absenHariIni.status === 'terlambat' ? 'Terlambat' : 'Tepat Waktu';
                 
-                // PERBAIKAN: Karena pakai latitude/longitude, kita tampilkan tulisan statis atau gabungkan koordinatnya
-                loc = 'Kantor Pusat / HQ'; 
+                // 🔥 PERBAIKAN 3: Gunakan nama lokasi dinamis dari DB 🔥
+                loc = namaLokasiUtama; 
                 geo = 'In Geofence';
                 activity = 'Sedang Aktif Bekerja'; 
             }
@@ -160,7 +168,9 @@ const getDashboardHariIni = async (req, res) => {
                 geo: geo,
                 activity: activity,
                 status: status, 
-                img: u.nama.substring(0, 2).toUpperCase()
+                img: u.nama.substring(0, 2).toUpperCase(),
+                // 🔥 PERBAIKAN 4: Kirim foto profil ke Frontend 🔥
+                foto_profil: u.foto_profil 
             };
         });
 
@@ -172,6 +182,6 @@ const getDashboardHariIni = async (req, res) => {
 };
 
 // ==========================================
-// 5. EXPORT SEMUA FUNGSI (UPDATE BAGIAN INI)
+// 5. EXPORT SEMUA FUNGSI
 // ==========================================
 module.exports = { getAnakBimbingan, getDetailMahasiswa, getDashboardHariIni };
