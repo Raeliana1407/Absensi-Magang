@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // PERBAIKAN: Import autoTable secara eksplisit
-import * as XLSX from 'xlsx'; // IMPORT BARU: Untuk fitur Spreadsheet
+import autoTable from 'jspdf-autotable'; 
+import * as XLSX from 'xlsx'; 
 
 export default function Laporan() {
   const [rekap, setRekap] = useState([]);
@@ -37,7 +37,7 @@ export default function Laporan() {
   }, [bulan, tahun, user.id]);
 
   // ==========================================
-  // FITUR 1: EXPORT KE PDF (BUG FIXED)
+  // FITUR 1: EXPORT KE PDF
   // ==========================================
   const handleExportPDF = () => {
     if (!rekap || rekap.length === 0) {
@@ -55,25 +55,25 @@ export default function Laporan() {
       doc.text(`Supervisor: ${user.nama || 'Pembimbing'}`, 14, 28);
       doc.text(`Periode: ${namaBulan} ${tahun}`, 14, 34);
 
-      const tableColumn = ["No", "NIM", "Nama Mahasiswa", "Hadir", "Tepat", "Telat", "Izin", "Total Jam", "Nilai"];
+      // Kolom 'Nilai' Dihapus, 'NIM' diganti 'ID'
+      const tableColumn = ["No", "ID", "Nama", "Hadir", "Tepat", "Telat", "Izin", "Total Jam", "Status"];
       const tableRows = [];
 
       rekap.forEach((item, index) => {
         const rowData = [
           index + 1,
-          item.nim || '-',
+          item.nim || '-', // nim di sini sebenarnya berisi ID EMP-XXXXX dari backend
           item.name || '-',
           `${item.persentase || 0}%`,
           item.tepat || 0,
           item.telat || 0,
           item.izin || 0,
           `${item.jam || 0} Jam`,
-          item.nilai || '-'
+          item.status || '-'
         ];
         tableRows.push(rowData);
       });
 
-      // PERBAIKAN: Gunakan fungsi autoTable langsung, bukan doc.autoTable
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
@@ -102,10 +102,9 @@ export default function Laporan() {
     try {
       const namaBulan = new Date(tahun, bulan - 1).toLocaleString('id-ID', { month: 'long' });
       
-      // 1. Format ulang data JSON agar sesuai dengan kolom Excel
       const dataExcel = rekap.map((item, index) => ({
         "No": index + 1,
-        "NIM": item.nim || '-',
+        "ID": item.nim || '-', // nim di sini sebenarnya berisi ID EMP-XXXXX dari backend
         "Nama Lengkap": item.name || '-',
         "Kehadiran (%)": item.persentase || 0,
         "Hadir (Hari)": item.hadir || '0/22',
@@ -113,18 +112,12 @@ export default function Laporan() {
         "Terlambat": item.telat || 0,
         "Izin / Sakit": item.izin || 0,
         "Total Jam Kerja": item.jam || 0,
-        "Nilai Evaluasi": item.nilai || '-',
         "Status Validasi": item.status || '-'
       }));
 
-      // 2. Buat Worksheet baru dari data JSON
       const worksheet = XLSX.utils.json_to_sheet(dataExcel);
-      
-      // 3. Buat Workbook baru dan masukkan Worksheet ke dalamnya
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Presensi");
-
-      // 4. Unduh file sebagai .xlsx
       XLSX.writeFile(workbook, `Rekap_Presensi_${namaBulan}_${tahun}.xlsx`);
     } catch (err) {
       console.error("Gagal men-generate Excel:", err);
@@ -146,7 +139,7 @@ export default function Laporan() {
         <div>
           <span className="text-[10px] font-bold text-blue-600 tracking-widest uppercase bg-blue-50 px-3 py-1 rounded-full">Evaluasi & Audit Akademik</span>
           <h1 className="text-2xl md:text-3xl font-black text-slate-800 mt-2">Laporan & Analisis Presensi</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-0.5 max-w-2xl">Analisis tingkat kedisiplinan, akumulasi jam kerja, dan rekapitulasi nilai mahasiswa bimbingan.</p>
+          <p className="text-xs md:text-sm text-slate-500 mt-0.5 max-w-2xl">Analisis tingkat kedisiplinan, akumulasi jam kerja, dan rekapitulasi tim bimbingan.</p>
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full xl:w-auto">
@@ -182,27 +175,17 @@ export default function Laporan() {
         </div>
       </div>
 
-      {/* 2. STATISTIK UTAMA LAPORAN */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tingkat Kehadiran</p>
-          <h3 className="text-3xl md:text-4xl font-black text-slate-800 mt-2">{avgKehadiran}%</h3>
-          <p className="text-[11px] text-emerald-600 font-bold mt-1">Rata-rata dari {totalMahasiswa} Bimbingan</p>
+      {/* 2. STATISTIK UTAMA LAPORAN (Sisa 2 Kotak Saja) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tingkat Kehadiran Keseluruhan</p>
+          <h3 className="text-3xl md:text-5xl font-black text-slate-800 mt-2">{avgKehadiran}%</h3>
+          <p className="text-xs text-emerald-600 font-bold mt-2 bg-emerald-50 px-3 py-1 rounded-full">Rata-rata dari {totalMahasiswa} Anggota Tim</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jam Efektif Terpenuhi</p>
-          <h3 className="text-3xl md:text-4xl font-black text-blue-600 mt-2">{totalJam}</h3>
-          <p className="text-[11px] text-slate-400 mt-1">Total akumulasi jam bimbingan</p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 opacity-50">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kepatuhan Geofence</p>
-          <h3 className="text-3xl md:text-4xl font-black text-emerald-600 mt-2">N/A</h3>
-          <p className="text-[11px] text-emerald-600 font-bold mt-1">Dalam pengembangan</p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 opacity-50">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lembur Terverifikasi</p>
-          <h3 className="text-3xl md:text-4xl font-black text-slate-800 mt-2">N/A</h3>
-          <p className="text-[11px] text-slate-500 mt-1">Dalam pengembangan</p>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Jam Efektif Terpenuhi</p>
+          <h3 className="text-3xl md:text-5xl font-black text-blue-600 mt-2">{totalJam} <span className="text-lg md:text-2xl">Jam</span></h3>
+          <p className="text-xs text-blue-600 font-bold mt-2 bg-blue-50 px-3 py-1 rounded-full">Akumulasi seluruh anggota tim</p>
         </div>
       </div>
 
@@ -210,7 +193,7 @@ export default function Laporan() {
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
            <div>
-              <h3 className="font-bold text-slate-800 text-base">Rekapitulasi Mahasiswa Bulanan</h3>
+              <h3 className="font-bold text-slate-800 text-base">Rekapitulasi Kehadiran Bulanan</h3>
               <p className="text-xs text-slate-400 mt-0.5">Menampilkan rekap presensi untuk bulan {bulan} / {tahun}</p>
            </div>
         </div>
@@ -219,50 +202,57 @@ export default function Laporan() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 text-[11px] font-bold text-slate-400 uppercase border-b border-slate-100">
               <tr>
-                <th className="p-4">Mahasiswa</th>
+                <th className="p-4">Anggota Tim</th>
                 <th className="p-4">Hari Hadir</th>
                 <th className="p-4">Tepat Waktu</th>
                 <th className="p-4">Terlambat</th>
                 <th className="p-4">Izin / Sakit</th>
-                <th className="p-4">Jam Bimbingan</th>
-                <th className="p-4">Nilai Disiplin</th>
+                <th className="p-4">Jam Kerja</th>
                 <th className="p-4">Status Rekap</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-12 text-slate-500 font-medium">Memuat data rekapitulasi...</td>
+                  <td colSpan="7" className="text-center py-12 text-slate-500 font-medium">Memuat data rekapitulasi...</td>
                 </tr>
               ) : rekap.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-12 text-slate-500 font-medium">Tidak ada data untuk bulan ini.</td>
+                  <td colSpan="7" className="text-center py-12 text-slate-500 font-medium">Tidak ada data untuk bulan ini.</td>
                 </tr>
               ) : (
                 rekap.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs">{item.img}</div>
+                        {/* FOTO PROFIL DINAMIS */}
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-black text-blue-700 text-sm overflow-hidden border border-slate-200">
+                           {item.foto_profil ? (
+                              <img 
+                                src={item.foto_profil.startsWith('http') ? item.foto_profil : `https://absensi-magang-beta.vercel.app/uploads/${item.foto_profil}`} 
+                                alt={item.name} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              item.img
+                            )}
+                        </div>
                         <div>
                           <p className="font-bold text-slate-800 text-xs">{item.name}</p>
-                          <p className="text-[10px] text-slate-400">NIM: {item.nim}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">ID: {item.nim}</p>
                         </div>
                       </div>
                     </td>
                     <td className="p-4">
                       <p className="font-bold text-slate-700 text-xs">{item.hadir}</p>
-                      <p className="text-[10px] text-emerald-600 font-semibold">{item.persentase}%</p>
+                      <p className="text-[10px] text-emerald-600 font-bold">{item.persentase}%</p>
                     </td>
-                    <td className="p-4 text-xs font-bold text-slate-600">{item.tepat}</td>
-                    <td className="p-4 text-xs font-bold text-amber-600">{item.telat}</td>
-                    <td className="p-4 text-xs font-bold text-slate-600">{item.izin}</td>
+                    <td className="p-4 text-xs font-bold text-emerald-600">{item.tepat}</td>
+                    <td className="p-4 text-xs font-bold text-rose-500">{item.telat}</td>
+                    <td className="p-4 text-xs font-bold text-amber-500">{item.izin}</td>
                     <td className="p-4 text-xs font-bold text-blue-600">{item.jam} Jam</td>
                     <td className="p-4">
-                      <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-xs font-black text-slate-700">{item.nilai}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${item.status === 'Siap Cetak' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                      <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${item.status === 'Siap Cetak' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
                         {item.status}
                       </span>
                     </td>
