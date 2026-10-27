@@ -67,40 +67,72 @@ const deleteUser = async (req, res) => {
 // FUNGSI UNTUK PENGATURAN (GEOFENCE & JAM)
 // =======================================
 
-// 1. Ambil Pengaturan Saat Ini
+// 1. Ambil Semua Pengaturan Lokasi
 const getSettings = async (req, res) => {
     try {
-        // Kita hanya mengambil 1 baris pertama karena pengaturan itu tunggal
-        const [rows] = await pool.execute('SELECT * FROM settings LIMIT 1');
-        if (rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'Pengaturan belum ada' });
-        }
-        res.json({ success: true, data: rows[0] });
+        // HAPUS "LIMIT 1" agar semua lokasi terpanggil
+        const [rows] = await pool.execute('SELECT * FROM settings ORDER BY id ASC');
+        res.json({ success: true, data: rows });
     } catch (error) {
         console.error("Error getSettings:", error);
         res.status(500).json({ success: false, message: 'Server error mengambil pengaturan' });
     }
 };
 
-// 2. Update Pengaturan
+// 2. Update Pengaturan (Berdasarkan ID)
 const updateSettings = async (req, res) => {
     try {
-        const { latitude, longitude, radius, jam_masuk, jam_pulang } = req.body;
+        const { id } = req.params;
+        const { nama_lokasi, latitude, longitude, radius, jam_masuk, jam_pulang } = req.body;
         
-        // Kita update baris dengan id = 1
         const query = `
             UPDATE settings 
-            SET latitude = ?, longitude = ?, radius = ?, jam_masuk = ?, jam_pulang = ?
-            WHERE id = 1
+            SET nama_lokasi = ?, latitude = ?, longitude = ?, radius = ?, jam_masuk = ?, jam_pulang = ?
+            WHERE id = ?
         `;
         
-        await pool.execute(query, [latitude, longitude, radius, jam_masuk, jam_pulang]);
-        res.json({ success: true, message: 'Konfigurasi Sistem berhasil disimpan!' });
+        await pool.execute(query, [nama_lokasi, latitude, longitude, radius, jam_masuk, jam_pulang, id]);
+        res.json({ success: true, message: 'Konfigurasi Titik Lokasi berhasil diupdate!' });
     } catch (error) {
         console.error("Error updateSettings:", error);
         res.status(500).json({ success: false, message: 'Server error menyimpan pengaturan' });
     }
 };
 
-// JANGAN LUPA export deleteUser juga!
-module.exports = { getAllUsers, updateUser, deleteUser, getSettings, updateSettings };
+// 3. Tambah Pengaturan Lokasi Baru (POST)
+const createSettings = async (req, res) => {
+    try {
+        const { nama_lokasi, latitude, longitude, radius, jam_masuk, jam_pulang } = req.body;
+        
+        const query = `
+            INSERT INTO settings (nama_lokasi, latitude, longitude, radius, jam_masuk, jam_pulang) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+        
+        const [result] = await pool.execute(query, [nama_lokasi, latitude, longitude, radius, jam_masuk, jam_pulang]);
+        res.json({ success: true, message: 'Titik Lokasi Baru berhasil ditambahkan!', newId: result.insertId });
+    } catch (error) {
+        console.error("Error createSettings:", error);
+        res.status(500).json({ success: false, message: 'Server error membuat lokasi baru' });
+    }
+};
+
+// 4. Hapus Pengaturan Lokasi (DELETE)
+const deleteSettings = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Opsional: Cek apakah sisa 1 lokasi. Kalau ya, tolak hapus.
+        const [count] = await pool.execute('SELECT COUNT(*) as total FROM settings');
+        if (count[0].total <= 1) {
+            return res.status(400).json({ success: false, message: 'Minimal harus ada 1 titik lokasi!' });
+        }
+
+        await pool.execute('DELETE FROM settings WHERE id = ?', [id]);
+        res.json({ success: true, message: 'Titik lokasi berhasil dihapus!' });
+    } catch (error) {
+        console.error("Error deleteSettings:", error);
+        res.status(500).json({ success: false, message: 'Server error menghapus lokasi' });
+    }
+};
+module.exports = { getAllUsers, updateUser, deleteUser, getSettings, updateSettings, createSettings, deleteSettings };
