@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BottomNav from '../components/layout/BottomNav';
+import Header from '../components/layout/Header';
 
 export default function Location() {
   const [coords, setCoords] = useState({ latitude: 0, longitude: 0, accuracy: 0 });
@@ -79,25 +80,7 @@ export default function Location() {
     <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] pb-28 relative shadow-2xl font-sans text-slate-800">
       
       {/* --- Top Header --- */}
-      <header className="flex items-center justify-between p-5 bg-white shadow-sm sticky top-0 z-20">
-        <div className="flex items-center gap-2">
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div>
-            <h1 className="text-xs font-bold text-blue-600 tracking-wider">CLOCKSYNC</h1>
-            <h2 className="text-sm font-semibold">Location Hub</h2>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-xs font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live
-          </div>
-          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm">
-            {namaDepan.charAt(0)}
-          </div>
-        </div>
-      </header>
+      <Header pageTitle="Location Hub" />
 
       <main className="px-5 mt-5">
         

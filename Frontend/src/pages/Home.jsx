@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BottomNav from '../components/layout/BottomNav';
+import Header from '../components/layout/Header';
 
 export default function Home() {
   const [isClockingIn, setIsClockingIn] = useState(false);
@@ -45,14 +46,14 @@ export default function Home() {
     try {
       const token = localStorage.getItem('token');
       
-      // JURUS 1: Cache-Buster (menambahkan stempel waktu agar URL selalu dianggap baru oleh Browser)
+      // JURUS 1: Cache-Buster
       const timestamp = new Date().getTime();
       
       // A. Ambil Status Hari Ini
       const resStatus = await fetch(`https://absensi-magang-beta.vercel.app/api/absen/status/${user.id}?t=${timestamp}`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache' // Paksa browser jangan pakai cache
+          'Cache-Control': 'no-cache' 
         }
       });
       
@@ -60,13 +61,10 @@ export default function Home() {
         const resultStatus = await resStatus.json();
         if (resultStatus.success) {
           
-          // 🔥 JURUS BODO AMAT: Paksa pakai memori HP kalau Vercel error baca tanggal 🔥
           const localPhase = localStorage.getItem('shift_phase');
           const localDate = localStorage.getItem('shift_date');
           const isToday = localDate === new Date().toDateString();
 
-          // Kalau hari ini di HP kita udah absen, tapi server Vercel malah bilang 'idle' (error timezone),
-          // KITA BANTAH SERVERNYA! Tetap munculkan tombol kuning & merah!
           let finalPhase = resultStatus.shiftPhase;
           if (isToday && localPhase && localPhase !== 'idle' && resultStatus.shiftPhase === 'idle') {
               finalPhase = localPhase; 
@@ -112,7 +110,6 @@ export default function Home() {
     }
   };
 
-  // Panggil fetch data saat halaman dimuat pertama kali
   useEffect(() => {
     if (user && user.id) {
       fetchDataDashboard();
@@ -158,13 +155,9 @@ export default function Home() {
             setStatusMessage(result.message);
             setIsSuccess(true);
             
-            // JURUS 2: Optimistic UI Update
-            // Ubah state React dan LocalStorage detik itu juga! 
-            // Jangan biarkan UI menunggu balasan API yang lelet
             setShiftPhase(nextPhase);
             localStorage.setItem('shift_phase', nextPhase);
             
-            // Perbarui Data Timeline di latar belakang
             await fetchDataDashboard(); 
             
           } else {
@@ -185,18 +178,14 @@ export default function Home() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
-  // Helper untuk Desain Timeline (Warna & Icon sesuai jenis absen)
+
   const getTimelineStyle = (jenis) => {
     if(jenis === 'masuk') return { bg: 'bg-emerald-100', dot: 'bg-emerald-500', title: 'Clocked In', desc: 'On-Site Location', textStatus: 'On Time', textColor: 'text-emerald-600 bg-emerald-50' };
-    if(jenis === 'istirahat_keluar') return { bg: 'bg-amber-100', dot: 'bg-amber-500', title: 'Break Out', desc: 'Meal/Rest Time', textStatus: 'Started', textColor: 'text-amber-600 bg-amber-50' };
-    if(jenis === 'istirahat_masuk') return { bg: 'bg-indigo-100', dot: 'bg-indigo-500', title: 'Break In', desc: 'Back to Work', textStatus: 'Ended', textColor: 'text-indigo-600 bg-indigo-50' };
     if(jenis === 'pulang') return { bg: 'bg-rose-100', dot: 'bg-rose-500', title: 'Clocked Out', desc: 'Shift Completed', textStatus: 'Done', textColor: 'text-rose-600 bg-rose-50' };
     return { bg: 'bg-slate-100', dot: 'bg-slate-500', title: 'Log', desc: 'System', textStatus: 'Logged', textColor: 'text-slate-600 bg-slate-50' };
   };
 
   const formatTime = (dateString) => {
-    // Karena backend sudah melempar teks kaku (YYYY-MM-DDTHH:mm:ss) tanpa huruf Z,
-    // Kita tambahkan secara manual +08:00 (WITA) agar browser tidak menebak-nebak lagi.
     const witaTime = new Date(`${dateString}+08:00`);
     return witaTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
@@ -205,94 +194,76 @@ export default function Home() {
     <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] pb-24 relative shadow-2xl font-sans text-slate-800">
       
       {/* Header */}
-      <header className="flex items-center justify-between p-5 bg-white">
-        <div className="flex items-center gap-2">
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div>
-            <h1 className="text-xs font-bold text-blue-600 tracking-wider">CLOCKSYNC</h1>
-            <h2 className="text-sm font-semibold">Attendance Home</h2>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-xs font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live
-          </div>
-          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden border-2 border-white shadow-sm">
-            {namaDepan.charAt(0)}
-          </div>
-        </div>
-      </header>
+      <Header pageTitle="Attendance Home" />
 
-      <main className="px-5 mt-2">
+      <main className="px-5 mt-6">
         {/* Greeting */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Good morning, {namaDepan} 👋</h1>
-          <p className="text-sm text-slate-500 mt-1">{todayFormatted}</p>
-          <div className="inline-flex items-center gap-2 mt-3 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold">
+        <div className="mb-8">
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Hi, {namaDepan}! 👋</h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">{todayFormatted}</p>
+          <div className="inline-flex items-center gap-2 mt-4 bg-blue-50/80 border border-blue-100 text-blue-700 px-4 py-2 rounded-full text-xs font-bold shadow-sm">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             Standard Shift <span className="text-blue-300">•</span> {shiftStart} - {shiftEnd}
           </div>
         </div>
 
-        {/* Clock & Action */}
-        <div className="text-center mb-6">
-          <div className="text-5xl font-extrabold text-[#0B1E46] tracking-tight">
+        {/* Clock & Actions */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center mb-6">
+          <div className="text-[3.25rem] leading-none font-black text-[#0B1E46] tracking-tighter">
             {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-            <span className="text-xl text-blue-600 ml-1">WITA</span>
+            <span className="text-xl text-blue-600 ml-1.5 font-bold tracking-normal">WITA</span>
           </div>
-          <p className="text-xs font-semibold mt-2 text-slate-500 flex justify-center items-center gap-1">
-             <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> {statusMessage}
+          <p className="text-xs font-bold mt-3 text-slate-400 flex justify-center items-center gap-1.5">
+             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> {statusMessage}
           </p>
           
-          {/*SEMUA TOMBOL DIBUKA TERUS KARENA STATE BUG DI VERCEL!*/}
-          <div className="flex flex-col gap-3 mt-5">
-              {/* 1. Tombol Clock In (Selalu Muncul) */}
-              <button onClick={() => handleAbsen('masuk', 'working')} disabled={isClockingIn} className="w-full bg-[#1E3A8A] text-white font-bold py-3.5 rounded-full text-lg shadow-lg shadow-blue-900/20 active:scale-95 transition-all flex justify-center items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+          {/* TOMBOL ABSEN YANG SUDAH DITUMPUK (STACKING) */}
+          <div className="flex flex-col gap-3 mt-6">
+              {/* Tombol Clock In (Biru) */}
+              <button 
+                onClick={() => handleAbsen('masuk', 'working')} 
+                disabled={isClockingIn} 
+                className="w-full bg-[#1E40AF] text-white font-bold py-4 rounded-2xl text-base shadow-lg shadow-blue-900/20 hover:bg-blue-800 active:scale-[0.98] transition-all flex justify-center items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
                 {isClockingIn ? 'Processing...' : 'Clock In'}
               </button>
 
-              {/* 2. Tombol Istirahat & Pulang (Selalu Muncul Berdampingan) */}
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => handleAbsen(shiftPhase === 'break' ? 'istirahat_masuk' : 'istirahat_keluar', shiftPhase === 'break' ? 'working' : 'break')} 
-                  disabled={isClockingIn} 
-                  className={`w-1/2 text-white font-bold py-3.5 rounded-full text-sm shadow-md active:scale-95 transition-all ${shiftPhase === 'break' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}
-                >
-                  {shiftPhase === 'break' ? '🔙 End Break' : '☕ Take Break'}
-                </button>
-                <button onClick={() => handleAbsen('pulang', 'completed')} disabled={isClockingIn} className="w-1/2 bg-rose-600 text-white font-bold py-3.5 rounded-full text-sm shadow-md shadow-rose-600/20 active:scale-95 transition-all">
-                  👋 Clock Out
-                </button>
-              </div>
+              {/* Tombol Clock Out (Merah) */}
+              <button 
+                onClick={() => handleAbsen('pulang', 'completed')} 
+                disabled={isClockingIn} 
+                className="w-full bg-rose-600 text-white font-bold py-4 rounded-2xl text-base shadow-lg shadow-rose-600/20 hover:bg-rose-700 active:scale-[0.98] transition-all flex justify-center items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Clock Out
+              </button>
           </div>
         </div>
 
-        {/* Total Logged Time Card - Sekarang Dinamis untuk Days Present */}
-        <div className="bg-[#1E40AF] text-white p-5 rounded-3xl shadow-lg shadow-blue-900/20 mb-6">
-           <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-bold text-blue-200 tracking-wider">THIS MONTH</span>
-              <div className="bg-[#6EE7B7] text-[#064E3B] text-[10px] font-bold px-2 py-1 rounded-full">
+        {/* Total Logged Time Card */}
+        <div className="bg-gradient-to-br from-[#1E40AF] to-blue-800 text-white p-6 rounded-3xl shadow-xl shadow-blue-900/20 mb-6 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl translate-x-10 -translate-y-10"></div>
+           <div className="flex justify-between items-start mb-2 relative z-10">
+              <span className="text-[10px] font-black text-blue-200 tracking-widest uppercase">This Month</span>
+              <div className="bg-emerald-400 text-emerald-950 text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-sm">
                  Active
               </div>
            </div>
            
-           {/* Menampilkan total hari hadir bulan ini (diambil dari API Riwayat) */}
-           <div className="flex items-baseline gap-2 mb-4 mt-2">
-              <h2 className="text-4xl font-extrabold tracking-tight">{kehadiranBulanIni} Days</h2>
-              <span className="text-xs text-blue-200 font-medium">Logged Present</span>
+           <div className="flex items-baseline gap-2 mb-5 mt-3 relative z-10">
+              <h2 className="text-5xl font-black tracking-tighter">{kehadiranBulanIni}</h2>
+              <span className="text-sm text-blue-200 font-bold uppercase tracking-wider">Days</span>
            </div>
 
-           <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="bg-[#1E3A8A] p-3 rounded-xl">
-                 <p className="text-[10px] text-blue-200 mb-0.5">Today's Logs</p>
-                 <p className="text-sm font-bold">{todayLogs.length} Actions</p>
+           <div className="grid grid-cols-2 gap-3 mt-4 relative z-10">
+              <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+                 <p className="text-[10px] font-bold text-blue-200 mb-1 uppercase tracking-wider">Today's Logs</p>
+                 <p className="text-lg font-black">{todayLogs.length} Actions</p>
               </div>
-              <div className="bg-[#1E3A8A] p-3 rounded-xl">
-                 <p className="text-[10px] text-blue-200 mb-0.5">Shift Status</p>
-                 <p className="text-sm font-bold capitalize">{shiftPhase}</p>
+              <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+                 <p className="text-[10px] font-bold text-blue-200 mb-1 uppercase tracking-wider">Shift Status</p>
+                 <p className="text-lg font-black capitalize">{shiftPhase}</p>
               </div>
            </div>
         </div>
