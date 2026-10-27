@@ -7,7 +7,7 @@ const getAnakBimbingan = async (req, res) => {
     try {
         const { id } = req.params;
         const query = `
-            SELECT id, nama, email, divisi, status, created_at 
+            SELECT id, nama, email, divisi, status, foto_profil, created_at 
             FROM users 
             WHERE pembimbing_id = ? AND role = 'magang'
             ORDER BY nama ASC

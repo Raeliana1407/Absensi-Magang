@@ -83,12 +83,22 @@ export default function BimbinganList() {
           <p className="text-center text-slate-500 py-8">Belum ada mahasiswa yang ditugaskan ke Anda.</p>
         ) : (
           filteredBimbingan.map((mhs) => (
-            <div key={mhs.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div key={mhs.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 transition-all hover:border-blue-200 hover:shadow-md">
               
               <div className="flex items-start gap-4 w-full lg:w-1/3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center font-black text-blue-600 shrink-0 text-xl">
-                  {mhs.nama.charAt(0).toUpperCase()}
+                {/* 🔥 BAGIAN FOTO PROFIL DINAMIS 🔥 */}
+                <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center font-black text-blue-600 shrink-0 text-xl overflow-hidden border border-slate-200">
+                  {mhs.foto_profil ? (
+                    <img 
+                      src={mhs.foto_profil.startsWith('http') ? mhs.foto_profil : `https://absensi-magang-beta.vercel.app/uploads/${mhs.foto_profil}`} 
+                      alt={mhs.nama} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    mhs.nama.charAt(0).toUpperCase()
+                  )}
                 </div>
+
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-slate-800 text-sm">{mhs.nama}</h4>
