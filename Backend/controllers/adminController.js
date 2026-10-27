@@ -41,6 +41,28 @@ const updateUser = async (req, res) => {
         res.status(500).json({ success: false, message: 'Gagal mengupdate pengguna' });
     }
 };
+
+// =======================================
+// FITUR BARU: HAPUS USER
+// =======================================
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const query = 'DELETE FROM users WHERE id = ?';
+        const [result] = await pool.execute(query, [id]);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+        }
+        
+        res.json({ success: true, message: 'User berhasil dihapus secara permanen' });
+    } catch (error) {
+        console.error("Error deleteUser:", error);
+        res.status(500).json({ success: false, message: 'Server error saat menghapus pengguna' });
+    }
+};
+
 // =======================================
 // FUNGSI UNTUK PENGATURAN (GEOFENCE & JAM)
 // =======================================
@@ -80,5 +102,5 @@ const updateSettings = async (req, res) => {
     }
 };
 
-// JANGAN LUPA export semua fungsinya!
-module.exports = { getAllUsers, updateUser, getSettings, updateSettings };
+// JANGAN LUPA export deleteUser juga!
+module.exports = { getAllUsers, updateUser, deleteUser, getSettings, updateSettings };
