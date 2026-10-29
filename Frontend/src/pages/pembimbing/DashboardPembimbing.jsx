@@ -49,7 +49,7 @@ export default function DashboardPembimbing() {
     if (filterActive === 'Terlambat') matchesFilter = mhs.status === 'late';
     if (filterActive === 'Izin Sakit') matchesFilter = mhs.status === 'absent';
     return matchesSearch && matchesFilter;
-  });
+  }).sort((a, b) => a.id - b.id); // 🔥 TAMBAHKAN BARIS INI UNTUK URUTAN BERDASARKAN ID 🔥
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">

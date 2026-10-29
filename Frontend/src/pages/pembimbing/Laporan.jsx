@@ -24,7 +24,15 @@ export default function Laporan() {
         const result = await response.json();
         
         if (result.success) {
-          setRekap(result.data);
+          // 🔥 FILTER AJAIB: Buang mahasiswa yang tidak ada aktivitas sama sekali di bulan ini 🔥
+          const dataAktif = result.data.filter(item => 
+            item.jam > 0 || 
+            parseInt(item.hadir) > 0 || 
+            item.izin > 0 || 
+            item.telat > 0
+          );
+          
+          setRekap(dataAktif); // Masukkan data yang sudah disaring ke state
         }
       } catch (error) {
         console.error("Gagal mengambil laporan:", error);
@@ -41,7 +49,7 @@ export default function Laporan() {
   // ==========================================
   const handleExportPDF = () => {
     if (!rekap || rekap.length === 0) {
-      alert("Tidak ada data untuk diekspor!");
+      alert("Tidak ada data untuk diekspor pada bulan ini!");
       return;
     }
 
@@ -55,14 +63,13 @@ export default function Laporan() {
       doc.text(`Supervisor: ${user.nama || 'Pembimbing'}`, 14, 28);
       doc.text(`Periode: ${namaBulan} ${tahun}`, 14, 34);
 
-      // Kolom 'Nilai' Dihapus, 'NIM' diganti 'ID'
       const tableColumn = ["No", "ID", "Nama", "Hadir", "Tepat", "Telat", "Izin", "Total Jam", "Status"];
       const tableRows = [];
 
       rekap.forEach((item, index) => {
         const rowData = [
           index + 1,
-          item.nim || '-', // nim di sini sebenarnya berisi ID EMP-XXXXX dari backend
+          item.nim || '-', 
           item.name || '-',
           `${item.persentase || 0}%`,
           item.tepat || 0,
@@ -95,7 +102,7 @@ export default function Laporan() {
   // ==========================================
   const handleExportExcel = () => {
     if (!rekap || rekap.length === 0) {
-      alert("Tidak ada data untuk diekspor!");
+      alert("Tidak ada data untuk diekspor pada bulan ini!");
       return;
     }
 
@@ -104,7 +111,7 @@ export default function Laporan() {
       
       const dataExcel = rekap.map((item, index) => ({
         "No": index + 1,
-        "ID": item.nim || '-', // nim di sini sebenarnya berisi ID EMP-XXXXX dari backend
+        "ID": item.nim || '-', 
         "Nama Lengkap": item.name || '-',
         "Kehadiran (%)": item.persentase || 0,
         "Hadir (Hari)": item.hadir || '0/22',
@@ -175,12 +182,12 @@ export default function Laporan() {
         </div>
       </div>
 
-      {/* 2. STATISTIK UTAMA LAPORAN (Sisa 2 Kotak Saja) */}
+      {/* 2. STATISTIK UTAMA LAPORAN */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tingkat Kehadiran Keseluruhan</p>
           <h3 className="text-3xl md:text-5xl font-black text-slate-800 mt-2">{avgKehadiran}%</h3>
-          <p className="text-xs text-emerald-600 font-bold mt-2 bg-emerald-50 px-3 py-1 rounded-full">Rata-rata dari {totalMahasiswa} Anggota Tim</p>
+          <p className="text-xs text-emerald-600 font-bold mt-2 bg-emerald-50 px-3 py-1 rounded-full">Rata-rata dari {totalMahasiswa} Anggota Tim Aktif</p>
         </div>
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Jam Efektif Terpenuhi</p>
@@ -218,14 +225,13 @@ export default function Laporan() {
                 </tr>
               ) : rekap.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-12 text-slate-500 font-medium">Tidak ada data untuk bulan ini.</td>
+                  <td colSpan="7" className="text-center py-12 text-slate-500 font-medium">Tidak ada data / aktivitas untuk bulan ini.</td>
                 </tr>
               ) : (
                 rekap.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        {/* FOTO PROFIL DINAMIS */}
                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-black text-blue-700 text-sm overflow-hidden border border-slate-200">
                            {item.foto_profil ? (
                               <img 
