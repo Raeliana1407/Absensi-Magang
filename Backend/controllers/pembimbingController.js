@@ -1,18 +1,36 @@
 const pool = require('../config/db');
 
 // ==========================================
-// 1. Fungsi Mengambil Daftar Anak Bimbingan
+// 1. Fungsi Mengambil Daftar Anak Bimbingan (Team)
 // ==========================================
 const getAnakBimbingan = async (req, res) => {
     try {
         const { id } = req.params;
-        const query = `
-            SELECT id, nama, email, divisi, status, foto_profil, created_at 
-            FROM users 
-            WHERE pembimbing_id = ? AND role = 'magang'
-            ORDER BY nama ASC
-        `;
-        const [rows] = await pool.execute(query, [id]);
+        const role = req.user?.role || req.query.role; // Tangkap role
+
+        let query = '';
+        let params = [];
+
+        if (role === 'admin') {
+            // ADMIN: Tarik semua magang
+            query = `
+                SELECT id, nama, email, divisi, status, foto_profil, created_at 
+                FROM users 
+                WHERE role = 'magang'
+                ORDER BY id ASC
+            `;
+        } else {
+            // PEMBIMBING: Tarik anak asuh saja
+            query = `
+                SELECT id, nama, email, divisi, status, foto_profil, created_at 
+                FROM users 
+                WHERE pembimbing_id = ? AND role = 'magang'
+                ORDER BY id ASC
+            `;
+            params = [id];
+        }
+
+        const [rows] = await pool.execute(query, params);
         res.json({ success: true, data: rows });
     } catch (error) {
         console.error("Error getAnakBimbingan:", error);
@@ -27,11 +45,9 @@ const getDetailMahasiswa = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // 1. Tarik info profil
         const [userInfo] = await pool.execute('SELECT nama, divisi, email FROM users WHERE id = ?', [id]);
         if (userInfo.length === 0) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
 
-        // 2. Tarik riwayat Absensi
         let absen = [];
         try {
             const queryAbsen = `
@@ -51,7 +67,6 @@ const getDetailMahasiswa = async (req, res) => {
             console.error("Gagal menarik data absensi:", err.message);
         }
 
-        // 3. Tarik riwayat Logbook
         let logbook = [];
         try {
             const queryLogbook = `
@@ -84,15 +99,25 @@ const getDetailMahasiswa = async (req, res) => {
 };
 
 // ==========================================
-// 4. Fungsi Mengambil Status Absen Hari Ini (Untuk Dashboard)
+// 4. Fungsi Mengambil Status Absen Hari Ini (Dashboard)
 // ==========================================
 const getDashboardHariIni = async (req, res) => {
     try {
         const { pembimbing_id } = req.params;
+        const role = req.user?.role || req.query.role; // Tangkap role
 
-        // 🔥 PERBAIKAN 1: Tambahkan 'foto_profil' di query users 🔥
-        const queryUsers = `SELECT id, nama, divisi, foto_profil FROM users WHERE pembimbing_id = ? AND role = 'magang' ORDER BY nama ASC`;
-        const [users] = await pool.execute(queryUsers, [pembimbing_id]);
+        let queryUsers = '';
+        let queryParams = [];
+
+        // Logika Mata Dewa Admin
+        if (role === 'admin') {
+            queryUsers = `SELECT id, nama, divisi, foto_profil, lokasi_id FROM users WHERE role = 'magang' ORDER BY id ASC`;
+        } else {
+            queryUsers = `SELECT id, nama, divisi, foto_profil, lokasi_id FROM users WHERE pembimbing_id = ? AND role = 'magang' ORDER BY id ASC`;
+            queryParams = [pembimbing_id];
+        }
+
+        const [users] = await pool.execute(queryUsers, queryParams);
 
         if (users.length === 0) {
             return res.json({ success: true, data: [] });
@@ -117,18 +142,17 @@ const getDashboardHariIni = async (req, res) => {
         `;
         const [izin] = await pool.execute(queryIzin, userIds);
 
-        // 🔥 PERBAIKAN 2: Ambil 'nama_lokasi' dari tabel settings 🔥
-        const querySettings = `SELECT nama_lokasi FROM settings LIMIT 1`;
+        // Ambil semua setting lokasi dari database untuk referensi
+        const querySettings = `SELECT id, nama_lokasi FROM settings`;
         const [settings] = await pool.execute(querySettings);
-        
-        // Kalau data nama_lokasi kosong di DB, kasih nilai fallback sementara
-        const namaLokasiUtama = settings.length > 0 && settings[0].nama_lokasi 
-            ? settings[0].nama_lokasi 
-            : 'Kantor Pusat / HQ';
 
         const bimbinganList = users.map(u => {
             const absenHariIni = absen.find(a => a.user_id === u.id);
             const izinHariIni = izin.find(i => i.user_id === u.id);
+            
+            // Tentukan nama lokasi berdasarkan lokasi_id user
+            const userLokasi = settings.find(s => s.id === u.lokasi_id);
+            const namaLokasiUtama = userLokasi ? userLokasi.nama_lokasi : 'Kantor Pusat / HQ';
 
             let status = 'belum_absen';
             let time = 'Belum Absen';
@@ -151,7 +175,6 @@ const getDashboardHariIni = async (req, res) => {
                 
                 timeStatus = absenHariIni.status === 'terlambat' ? 'Terlambat' : 'Tepat Waktu';
                 
-                // 🔥 PERBAIKAN 3: Gunakan nama lokasi dinamis dari DB 🔥
                 loc = namaLokasiUtama; 
                 geo = 'In Geofence';
                 activity = 'Sedang Aktif Bekerja'; 
@@ -169,7 +192,6 @@ const getDashboardHariIni = async (req, res) => {
                 activity: activity,
                 status: status, 
                 img: u.nama.substring(0, 2).toUpperCase(),
-                // 🔥 PERBAIKAN 4: Kirim foto profil ke Frontend 🔥
                 foto_profil: u.foto_profil 
             };
         });
@@ -181,7 +203,4 @@ const getDashboardHariIni = async (req, res) => {
     }
 };
 
-// ==========================================
-// 5. EXPORT SEMUA FUNGSI
-// ==========================================
 module.exports = { getAnakBimbingan, getDetailMahasiswa, getDashboardHariIni };

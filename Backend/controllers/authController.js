@@ -13,10 +13,15 @@ cloudinary.config({
 
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const [rows] = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
+        // Karena input bisa username ATAU email, kita tangkap 'email' dari frontend 
+        // yang sekarang berfungsi ganda sebagai identifier.
+        const identifier = req.body.email; 
+        const { password } = req.body;
+
+        // Cari user berdasarkan username ATAU email
+        const [rows] = await pool.execute('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
         
-        if (rows.length === 0) return res.status(404).json({ success: false, message: 'Email tidak ditemukan.' });
+        if (rows.length === 0) return res.status(404).json({ success: false, message: 'Username atau Email tidak ditemukan.' });
         
         const user = rows[0];
         let isPasswordValid = false;
@@ -48,9 +53,11 @@ const login = async (req, res) => {
             user: { 
                 id: user.id, 
                 nama: user.nama, 
+                username: user.username,
                 email: user.email, 
                 divisi: user.divisi, 
                 role: user.role,
+                lokasi_id: user.lokasi_id,
                 foto_profil: user.foto_profil || null 
             }
         });
@@ -91,22 +98,27 @@ const ubahKataSandi = async (req, res) => {
     }
 };
 
+// 🔥 UPDATE REGISTER 🔥
 const register = async (req, res) => {
     try {
-        const { nama, email, password } = req.body;
+        // Ambil data (termasuk username dan lokasi_id)
+        const { nama, username, email, password, lokasi_id } = req.body;
 
-        const checkQuery = `SELECT id FROM users WHERE email = ?`;
-        const [existingUser] = await pool.execute(checkQuery, [email]);
-        
+        // Cek apakah username sudah ada
+        const [existingUser] = await pool.execute('SELECT id FROM users WHERE username = ?', [username]);
         if (existingUser.length > 0) {
-            return res.status(400).json({ success: false, message: 'Email sudah terdaftar. Gunakan email lain!' });
+            return res.status(400).json({ success: false, message: 'Username sudah digunakan. Gunakan username lain!' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
+        
+        // Finalisasi data (email bisa null, lokasi default 1)
+        const finalEmail = email || null;
+        const finalLokasiId = lokasi_id || 1;
 
-        const insertQuery = `INSERT INTO users (nama, email, password, role, status) VALUES (?, ?, ?, 'magang', 'pending')`;
-        await pool.execute(insertQuery, [nama, email, hashedPassword]);
+        const insertQuery = `INSERT INTO users (nama, username, email, password, role, status, lokasi_id) VALUES (?, ?, ?, ?, 'magang', 'pending', ?)`;
+        await pool.execute(insertQuery, [nama, username, finalEmail, hashedPassword, finalLokasiId]);
 
         res.status(201).json({ 
             success: true, 
@@ -119,21 +131,19 @@ const register = async (req, res) => {
     }
 };
 
-// 🔥 FUNGSI BARU: UPDATE PROFILE (NAMA & FOTO PROFIL) 🔥
 const updateProfile = async (req, res) => {
     try {
         const { user_id, nama } = req.body;
         let url_foto_baru = null;
 
-        // Jika user memilih file foto baru
         if (req.file) {
             const uploadToCloudinary = (fileBuffer) => {
                 return new Promise((resolve, reject) => {
                     let stream = cloudinary.uploader.upload_stream(
                         { 
-                            folder: "absensi_magang/profile", // Folder khusus foto profil
+                            folder: "absensi_magang/profile",
                             transformation: [
-                                { width: 500, height: 500, crop: "fill", gravity: "face" }, // Auto-crop bulat/persegi pas di muka!
+                                { width: 500, height: 500, crop: "fill", gravity: "face" },
                                 { quality: "auto" },
                                 { fetch_format: "auto" }
                             ]
@@ -151,28 +161,25 @@ const updateProfile = async (req, res) => {
             url_foto_baru = resultUpload.secure_url;
         }
 
-        // Ambil data user lama
         const [existingUsers] = await pool.execute('SELECT * FROM users WHERE id = ?', [user_id]);
         if (existingUsers.length === 0) {
             return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
         }
         const oldUser = existingUsers[0];
 
-        // Tentukan data final (kalau nama/foto tidak diisi, pakai data lama)
         const finalNama = nama || oldUser.nama;
         const finalFoto = url_foto_baru || oldUser.foto_profil;
 
-        // Update ke database MySQL
         const updateQuery = `UPDATE users SET nama = ?, foto_profil = ? WHERE id = ?`;
         await pool.execute(updateQuery, [finalNama, finalFoto, user_id]);
 
-        // Kirim balik data user terbaru agar Frontend bisa langsung update localStorage
         res.json({
             success: true,
             message: 'Profil berhasil diperbarui!',
             user: {
                 id: oldUser.id,
                 nama: finalNama,
+                username: oldUser.username,
                 email: oldUser.email,
                 divisi: oldUser.divisi,
                 role: oldUser.role,

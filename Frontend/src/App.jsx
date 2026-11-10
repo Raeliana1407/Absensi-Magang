@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // --- Halaman Anak Magang ---
 import Home from './pages/Home';
@@ -14,20 +14,18 @@ import Setting from './pages/Setting';
 import RiwayatPengajuan from './pages/RiwayatPengajuan';
 import Register from './pages/Register';
 
-// --- Halaman Pembimbing ---
+// --- Halaman Pembimbing & Admin (Lebur) ---
 import PembimbingLayout from './components/layout/PembimbingLayout';
 import DashboardPembimbing from './pages/pembimbing/DashboardPembimbing';
 import BimbinganList from './pages/pembimbing/BimbinganList';
 import Laporan from './pages/pembimbing/Laporan';
 import DetailMahasiswa from './pages/pembimbing/DetailMahasiswa';
-
-// --- Halaman Admin ---
-import AdminLayout from './components/layout/AdminLayout';
-// Halaman sementara untuk memancing render
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminSettings from './pages/admin/AdminSettings';
 import PersetujuanIzin from './pages/pembimbing/PersetujuanIzin';
 import SettingsPembimbing from './pages/pembimbing/SettingsPembimbing';
+
+// --- Halaman Khusus Admin ---
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminSettings from './pages/admin/AdminSettings';
 
 function App() {
   return (
@@ -49,25 +47,26 @@ function App() {
         <Route path="/register" element={<Register />} />
         
         {/* =========================================
-            ROUTE PEMBIMBING (Dibungkus Layout)
+            ROUTE SUPERVISOR & SUPERADMIN (LEBUR)
         ============================================= */}
+        {/* Admin bisa mengakses semua ini karena pakai layout yang sama */}
         <Route path="/pembimbing" element={<PembimbingLayout />}>
-          {/* Kalau URL-nya /pembimbing/dashboard, masuk ke sini */}
+          {/* Menu yang di-share (Admin & Pembimbing) */}
           <Route path="dashboard" element={<DashboardPembimbing />} />
           <Route path="laporan" element={<Laporan />} />
-          {/* Kalau URL-nya /pembimbing/bimbingan, masuk ke sini */}
           <Route path="bimbingan" element={<BimbinganList />} />
           <Route path="mahasiswa/:id" element={<DetailMahasiswa />} />
           <Route path="persetujuan" element={<PersetujuanIzin />} />
           <Route path="settings" element={<SettingsPembimbing />} />
+          
+          {/* Menu Khusus Admin (Bisa diakses dengan URL /pembimbing/admin-users) */}
+          <Route path="admin-users" element={<AdminUsers />} />
+          <Route path="admin-settings" element={<AdminSettings />} />
         </Route>
-        {/* =========================================
-            ROUTE SUPERADMIN
-        ============================================= */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="settings" element={<AdminSettings />} />
-        </Route>  
+
+        {/* Redirect admin root ke dashboard gabungan */}
+        <Route path="/admin" element={<Navigate to="/pembimbing/dashboard" replace />} />
+        
       </Routes>
     </Router>
   );

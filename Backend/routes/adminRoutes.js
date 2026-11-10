@@ -7,6 +7,7 @@ const { getAllUsers, updateUser, deleteUser, getSettings, updateSettings, create
 router.get('/users', getAllUsers);
 router.put('/users/:id', updateUser);
 router.delete('/users/:id', deleteUser); // <-- Endpoint Hapus User
+router.put('/users/:id/reset-password', resetPassword);
 
 // Endpoint Settings (Geofence & Jam Kerja)
 router.get('/settings', getSettings);
