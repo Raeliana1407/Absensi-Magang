@@ -18,7 +18,7 @@ export default function DashboardPembimbing() {
     const fetchDashboard = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/pembimbing/dashboard-hari-ini/${user.id}`, {
+        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/pembimbing/dashboard-hari-ini/${user.id}?role=${user.role}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
