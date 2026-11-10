@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 // Import fungsi yang baru kita buat, pastikan deleteUser ikut di-import
-const { getAllUsers, updateUser, deleteUser, getSettings, updateSettings, createSettings, deleteSettings } = require('../controllers/adminController');
+const { getAllUsers, updateUser, deleteUser, getSettings, updateSettings, createSettings, deleteSettings, resetPassword } = require('../controllers/adminController');
 
 // Endpoint Users
 router.get('/users', getAllUsers);
