@@ -2,24 +2,28 @@ const pool = require('../config/db');
 
 const getRekapBulanan = async (req, res) => {
     try {
-        // Ambil ID pembimbing dari URL parameter
         const { pembimbing_id } = req.params; 
+        const role = req.user?.role || req.query.role; // 🔥 Tangkap role
         const bulan = req.query.bulan || new Date().getMonth() + 1;
         const tahun = req.query.tahun || new Date().getFullYear();
 
-        // 1. Ambil HANYA anak bimbingan milik pembimbing ini
-        const [users] = await pool.execute(
-            `SELECT id, nama FROM users WHERE pembimbing_id = ? AND role = 'magang'`,
-            [pembimbing_id]
-        );
+        let queryUsers = '';
+        let paramsUsers = [];
+
+        if (role === 'admin') {
+            queryUsers = `SELECT id, nama FROM users WHERE role = 'magang'`;
+        } else {
+            queryUsers = `SELECT id, nama FROM users WHERE pembimbing_id = ? AND role = 'magang'`;
+            paramsUsers = [pembimbing_id];
+        }
+
+        const [users] = await pool.execute(queryUsers, paramsUsers);
 
         if (users.length === 0) return res.json({ success: true, data: [] });
 
-        // Ambil array ID user untuk optimasi query
         const userIds = users.map(u => u.id);
         const placeholders = userIds.map(() => '?').join(',');
 
-        // 2. Ambil data absensi khusus anak bimbingan ini
         const queryAbsen = `
             SELECT user_id, status 
             FROM absensi 
@@ -29,7 +33,6 @@ const getRekapBulanan = async (req, res) => {
         `;
         const [absensi] = await pool.execute(queryAbsen, [bulan, tahun, ...userIds]);
 
-        // 3. Ambil data izin/sakit
         const queryIzin = `
             SELECT user_id, tanggal_mulai, tanggal_selesai 
             FROM pengajuan_izin 
@@ -69,7 +72,7 @@ const getRekapBulanan = async (req, res) => {
             return {
                 id: user.id,
                 name: user.nama,
-                nim: `EMP-${String(user.id).padStart(5, '0')}`, // Perbaikan NIM dinamis
+                nim: `EMP-${String(user.id).padStart(5, '0')}`, 
                 hadir: `${totalHadir}/${totalHariKerja}`,
                 persentase: persentase,
                 tepat: tepat,

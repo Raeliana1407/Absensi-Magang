@@ -18,13 +18,12 @@ export default function Laporan() {
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/laporan/rekap/${user.id}?bulan=${bulan}&tahun=${tahun}`, {
+        const response = await fetch(`https://absensi-magang-beta.vercel.app/api/laporan/rekap/${user.id}?bulan=${bulan}&tahun=${tahun}&role=${user.role}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
         
         if (result.success) {
-          // 🔥 FILTER AJAIB: Buang mahasiswa yang tidak ada aktivitas sama sekali di bulan ini 🔥
           const dataAktif = result.data.filter(item => 
             item.jam > 0 || 
             parseInt(item.hadir) > 0 || 
@@ -42,7 +41,7 @@ export default function Laporan() {
     };
 
     if (user.id) fetchLaporan();
-  }, [bulan, tahun, user.id]);
+  }, [bulan, tahun, user.id, user.role]);
 
   // ==========================================
   // FITUR 1: EXPORT KE PDF
@@ -58,7 +57,7 @@ export default function Laporan() {
       const namaBulan = new Date(tahun, bulan - 1).toLocaleString('id-ID', { month: 'long' });
 
       doc.setFontSize(16);
-      doc.text('Laporan Rekapitulasi Presensi Magang', 14, 20);
+      doc.text('Laporan Rekapitulasi Presensi Bimbingan', 14, 20);
       doc.setFontSize(11);
       doc.text(`Supervisor: ${user.nama || 'Pembimbing'}`, 14, 28);
       doc.text(`Periode: ${namaBulan} ${tahun}`, 14, 34);
@@ -132,9 +131,9 @@ export default function Laporan() {
     }
   };
 
-  const totalMahasiswa = rekap.length;
-  const avgKehadiran = totalMahasiswa 
-    ? (rekap.reduce((acc, curr) => acc + curr.persentase, 0) / totalMahasiswa).toFixed(1) 
+  const totalBimbingan = rekap.length;
+  const avgKehadiran = totalBimbingan 
+    ? (rekap.reduce((acc, curr) => acc + curr.persentase, 0) / totalBimbingan).toFixed(1) 
     : 0;
   const totalJam = rekap.reduce((acc, curr) => acc + curr.jam, 0);
 
@@ -187,7 +186,7 @@ export default function Laporan() {
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tingkat Kehadiran Keseluruhan</p>
           <h3 className="text-3xl md:text-5xl font-black text-slate-800 mt-2">{avgKehadiran}%</h3>
-          <p className="text-xs text-emerald-600 font-bold mt-2 bg-emerald-50 px-3 py-1 rounded-full">Rata-rata dari {totalMahasiswa} Anggota Tim Aktif</p>
+          <p className="text-xs text-emerald-600 font-bold mt-2 bg-emerald-50 px-3 py-1 rounded-full">Rata-rata dari {totalBimbingan} Anggota Tim Aktif</p>
         </div>
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Jam Efektif Terpenuhi</p>

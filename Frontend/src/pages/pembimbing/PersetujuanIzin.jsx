@@ -14,14 +14,14 @@ export default function PersetujuanIzin() {
 
   const fetchData = async () => {
     try {
-      const resPending = await fetch('https://absensi-magang-beta.vercel.app/api/pengajuan/pending', {
+      const resPending = await fetch(`https://absensi-magang-beta.vercel.app/api/pengajuan/pending?role=${user.role}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const dataPending = await resPending.json();
       if (dataPending.success) setPengajuan(dataPending.data);
 
       if (user.id) {
-        const resRiwayat = await fetch(`https://absensi-magang-beta.vercel.app/api/pengajuan/riwayat-pembimbing/${user.id}`, {
+        const resRiwayat = await fetch(`https://absensi-magang-beta.vercel.app/api/pengajuan/riwayat-pembimbing/${user.id}?role=${user.role}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const dataRiwayat = await resRiwayat.json();
@@ -36,7 +36,7 @@ export default function PersetujuanIzin() {
 
   useEffect(() => {
     fetchData();
-  }, [token, user.id]);
+  }, [token, user.id, user.role]);
 
   const handleAksi = async (id, statusBaru) => {
     const konfirmasi = window.confirm(`Apakah Anda yakin ingin ${statusBaru === 'disetujui' ? 'MENYETUJUI' : 'MENOLAK'} pengajuan ini?`);
@@ -71,7 +71,7 @@ export default function PersetujuanIzin() {
 
   // 🔥 FUNGSI BARU: AKHIRI IZIN LEBIH AWAL 🔥
   const handleAkhiriIzin = async (id) => {
-    const konfirmasi = window.confirm("Anak magang sudah kembali bekerja hari ini? Tanggal selesai izin akan diubah ke hari ini.");
+    const konfirmasi = window.confirm("Peserta bimbingan sudah kembali bekerja hari ini? Tanggal selesai izin akan diubah ke hari ini.");
     if (!konfirmasi) return;
 
     try {
@@ -114,7 +114,7 @@ export default function PersetujuanIzin() {
       <header className="bg-[#1E40AF] p-6 shadow-lg rounded-b-[32px] sticky top-0 z-10 flex justify-between items-center">
         <div>
            <h1 className="text-xl font-bold text-white mb-1">Approval Dashboard</h1>
-           <p className="text-sm text-blue-200">Konfirmasi Izin & Sakit Anak Magang</p>
+           <p className="text-sm text-blue-200">Konfirmasi Izin & Sakit Bimbingan</p>
         </div>
         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white font-bold">
            {user.nama ? user.nama.charAt(0) : 'P'}
@@ -215,7 +215,7 @@ export default function PersetujuanIzin() {
                    <div>
                      <p className="font-bold text-sm text-slate-800">{item.nama_user}</p>
                      <p className="text-xs text-slate-500 mt-0.5">
-                       {item.jenis_izin.toUpperCase()} • {formatDate(item.tanggal_mulai)}
+                       - {item.jenis_izin.toUpperCase()} {formatDate(item.tanggal_mulai)}
                      </p>
                    </div>
                    <div className="flex items-center gap-2">

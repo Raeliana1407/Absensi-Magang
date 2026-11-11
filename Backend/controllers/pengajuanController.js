@@ -2,14 +2,12 @@ const pool = require('../config/db');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
 
-// Konfigurasi Cloudinary yang Aman
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Mengajukan Izin (Tanpa File)
 const ajukanIzin = async (req, res) => {
     try {
         const { user_id, tanggal_mulai, tanggal_selesai, keterangan } = req.body;
@@ -29,7 +27,6 @@ const ajukanIzin = async (req, res) => {
     }
 };
 
-// Mengajukan Sakit (Upload ke Cloudinary + Kompresi Otomatis)
 const ajukanSakit = async (req, res) => {
     try {
         const { user_id, tanggal_mulai, tanggal_selesai, keterangan } = req.body;
@@ -40,7 +37,6 @@ const ajukanSakit = async (req, res) => {
                 return new Promise((resolve, reject) => {
                     let stream = cloudinary.uploader.upload_stream(
                         { 
-                            // 🔥 FOLDER DIPISAH & FOTO DIKOMPRES OTOMATIS 🔥
                             folder: "absensi_magang/surat_sakit",
                             transformation: [
                                 { width: 1000, crop: "limit" }, 
@@ -49,11 +45,8 @@ const ajukanSakit = async (req, res) => {
                             ]
                         },
                         (error, result) => {
-                            if (result) {
-                                resolve(result);
-                            } else {
-                                reject(error);
-                            }
+                            if (result) resolve(result);
+                            else reject(error);
                         }
                     );
                     streamifier.createReadStream(fileBuffer).pipe(stream);
@@ -80,9 +73,11 @@ const ajukanSakit = async (req, res) => {
     }
 };
 
-// Menampilkan daftar pengajuan yang masih 'pending'
 const getPengajuanPending = async (req, res) => {
     try {
+        // Asumsi admin butuh lihat semua pending
+        // Kalau menyimpen data pembimbing_id di params/query dan mau membatasi, tambahkan logika if di sini.
+        // Tapi untuk Admin Portal, biasanya admin bisa nge-approve izin semua orang.
         const query = `
             SELECT p.*, u.nama AS nama_user 
             FROM pengajuan_izin p 
@@ -97,7 +92,6 @@ const getPengajuanPending = async (req, res) => {
     }
 };
 
-// Mengupdate status pengajuan menjadi 'disetujui' atau 'ditolak'
 const updateStatusPengajuan = async (req, res) => {
     try {
         const { id } = req.params;
@@ -122,26 +116,40 @@ const getRiwayatPengajuanUser = async (req, res) => {
 
 const getRiwayatPembimbing = async (req, res) => {
     try {
-        const query = `
-            SELECT p.*, u.nama AS nama_user 
-            FROM pengajuan_izin p
-            JOIN users u ON p.user_id = u.id
-            WHERE u.pembimbing_id = ? AND p.status != 'pending'
-            ORDER BY p.id DESC LIMIT 50
-        `;
-        const [rows] = await pool.execute(query, [req.params.pembimbing_id]);
+        const role = req.user?.role || req.query.role; // Tangkap role
+        
+        let query = '';
+        let params = [];
+
+        if (role === 'admin') {
+            query = `
+                SELECT p.*, u.nama AS nama_user 
+                FROM pengajuan_izin p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.status != 'pending'
+                ORDER BY p.id DESC LIMIT 100
+            `;
+        } else {
+            query = `
+                SELECT p.*, u.nama AS nama_user 
+                FROM pengajuan_izin p
+                JOIN users u ON p.user_id = u.id
+                WHERE u.pembimbing_id = ? AND p.status != 'pending'
+                ORDER BY p.id DESC LIMIT 50
+            `;
+            params = [req.params.pembimbing_id];
+        }
+
+        const [rows] = await pool.execute(query, params);
         res.json({ success: true, data: rows });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error memuat riwayat.' });
     }
 };
-// Mengakhiri izin lebih awal (set tanggal_selesai ke KEMARIN agar hari ini bisa absen)
+
 const akhiriIzinLebihAwal = async (req, res) => {
     try {
         const { id } = req.params;
-        
-        // 🔥 TRIK HR SYSTEM: Kita ubah tanggal_selesai jadi KEMARIN (H-1).
-        // Pakai DATE_SUB dari MySQL biar aman dari perbedaan zona waktu server.
         const query = `UPDATE pengajuan_izin SET tanggal_selesai = DATE_SUB(CURDATE(), INTERVAL 1 DAY) WHERE id = ? AND status = 'disetujui'`;
         
         await pool.execute(query, [id]);
@@ -152,4 +160,5 @@ const akhiriIzinLebihAwal = async (req, res) => {
         res.status(500).json({ success: false, message: 'Gagal mengupdate tanggal izin.' });
     }
 };
+
 module.exports = { ajukanIzin, ajukanSakit, getPengajuanPending, updateStatusPengajuan, getRiwayatPengajuanUser, getRiwayatPembimbing, akhiriIzinLebihAwal };

@@ -9,12 +9,10 @@ const tambahJurnal = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Kegiatan tidak boleh kosong!' });
         }
 
-        // Ambil tanggal hari ini format YYYY-MM-DD
         const tanggalHariIni = new Date().toISOString().split('T')[0];
         
-        // Deskripsi default jika kosong
         const descVal = deskripsi || '-';
-        const statusDefault = 'menunggu'; // Sesuai enum di database lu
+        const statusDefault = 'menunggu'; 
 
         const query = `
             INSERT INTO jurnal_logbook (user_id, tanggal, kegiatan, deskripsi, status_review) 
