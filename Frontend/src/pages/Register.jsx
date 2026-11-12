@@ -208,7 +208,7 @@ export default function Register() {
           </form>
           
           <p className="text-center text-sm text-slate-500 mt-8">
-            Sudah memiliki akun? <Link to="/login" className="font-bold text-blue-600 hover:underline">Masuk di sini</Link>
+            Sudah memiliki akun? <Link to="/" className="font-bold text-blue-600 hover:underline">Masuk di sini</Link>
           </p>
         </div>
       </div>
