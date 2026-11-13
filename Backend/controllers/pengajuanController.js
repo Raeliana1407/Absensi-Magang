@@ -12,6 +12,17 @@ const ajukanIzin = async (req, res) => {
     try {
         const { user_id, tanggal_mulai, tanggal_selesai, keterangan } = req.body;
         
+        const [cekPending] = await pool.execute(
+            `SELECT id FROM pengajuan_izin WHERE user_id = ? AND status = 'pending'`,
+            [user_id]
+        );
+        if (cekPending.length > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Harap tunggu, Anda masih memiliki pengajuan izin/sakit yang sedang diproses.' 
+            });
+        }
+
         const finalUserId = user_id ?? null;
         const finalTglMulai = tanggal_mulai ?? null;
         const finalTglSelesai = tanggal_selesai ?? null;
@@ -30,8 +41,19 @@ const ajukanIzin = async (req, res) => {
 const ajukanSakit = async (req, res) => {
     try {
         const { user_id, tanggal_mulai, tanggal_selesai, keterangan } = req.body;
-        let file_lampiran = null;
+        
+        const [cekPending] = await pool.execute(
+            `SELECT id FROM pengajuan_izin WHERE user_id = ? AND status = 'pending'`,
+            [user_id]
+        );
+        if (cekPending.length > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Harap tunggu, Anda masih memiliki pengajuan izin/sakit yang sedang diproses.' 
+            });
+        }
 
+        let file_lampiran = null;
         if (req.file) {
             const uploadToCloudinary = (fileBuffer) => {
                 return new Promise((resolve, reject) => {
@@ -75,9 +97,6 @@ const ajukanSakit = async (req, res) => {
 
 const getPengajuanPending = async (req, res) => {
     try {
-        // Asumsi admin butuh lihat semua pending
-        // Kalau menyimpen data pembimbing_id di params/query dan mau membatasi, tambahkan logika if di sini.
-        // Tapi untuk Admin Portal, biasanya admin bisa nge-approve izin semua orang.
         const query = `
             SELECT p.*, u.nama AS nama_user 
             FROM pengajuan_izin p 
@@ -116,8 +135,7 @@ const getRiwayatPengajuanUser = async (req, res) => {
 
 const getRiwayatPembimbing = async (req, res) => {
     try {
-        const role = req.user?.role || req.query.role; // Tangkap role
-        
+        const role = req.user?.role || req.query.role;
         let query = '';
         let params = [];
 
@@ -151,12 +169,9 @@ const akhiriIzinLebihAwal = async (req, res) => {
     try {
         const { id } = req.params;
         const query = `UPDATE pengajuan_izin SET tanggal_selesai = DATE_SUB(CURDATE(), INTERVAL 1 DAY) WHERE id = ? AND status = 'disetujui'`;
-        
         await pool.execute(query, [id]);
-        
         res.json({ success: true, message: 'Izin diakhiri! Anak magang sudah bisa absen hari ini.' });
     } catch (error) {
-        console.error("Error akhiriIzin:", error);
         res.status(500).json({ success: false, message: 'Gagal mengupdate tanggal izin.' });
     }
 };

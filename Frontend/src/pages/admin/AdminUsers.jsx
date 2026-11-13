@@ -91,7 +91,7 @@ export default function AdminUsers() {
   };
 
   // ==========================================
-  // FITUR BARU: HAPUS USER
+  // FITUR HAPUS USER
   // ==========================================
   const handleDelete = async (id, nama) => {
     const confirmDelete = window.confirm(`⚠️ PERINGATAN!\n\nApakah Anda yakin ingin menghapus akun "${nama}" secara permanen?\nSemua data presensi dan logbook yang terkait dengan akun ini mungkin akan ikut terhapus.`);
@@ -119,7 +119,7 @@ export default function AdminUsers() {
   };
 
   // ==========================================
-  // 🔥 FITUR BARU: RESET PASSWORD 🔥
+  // FITUR RESET PASSWORD
   // ==========================================
   const handleResetPassword = async (id, nama) => {
     const confirmReset = window.confirm(`🔐 RESET PASSWORD\n\nApakah Anda yakin ingin me-reset password untuk akun "${nama}"?\n\nPassword akan diubah kembali ke default: "magang123"`);
@@ -230,8 +230,13 @@ export default function AdminUsers() {
                       </div>
                       <div>
                         <p className="font-bold text-slate-800 text-sm">{user.nama}</p>
-                        <p className="text-[10px] text-slate-500 font-medium">@{user.username || 'user'}</p>
-                        {user.email && <p className="text-[10px] text-slate-400">{user.email}</p>}
+                        
+                        {/* MENAMPILKAN USERNAME DI BAWAH NAMA */}
+                        <p className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                          @{user.username || 'Belum Set Username'}
+                        </p>
+                        
+                        {user.email && <p className="text-[10px] text-slate-400 mt-0.5">{user.email}</p>}
                       </div>
                     </div>
                   </td>
@@ -256,7 +261,7 @@ export default function AdminUsers() {
                     {/* BUTTONS GROUP */}
                     <div className="flex items-center justify-end gap-2">
                       
-                      {/* 🔥 TOMBOL RESET PASSWORD (Orange/Kuning) 🔥 */}
+                      {/* TOMBOL RESET PASSWORD */}
                       <button 
                         onClick={() => handleResetPassword(user.id, user.nama)}
                         title="Reset Password ke Default (magang123)"
@@ -292,7 +297,7 @@ export default function AdminUsers() {
         </table>
       </div>
 
-      {/* MODAL EDIT (Sama seperti sebelumnya) */}
+      {/* MODAL EDIT */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
