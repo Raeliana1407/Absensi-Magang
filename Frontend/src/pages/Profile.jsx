@@ -6,15 +6,18 @@ export default function Profile() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // --- Ambil Data User & Jadikan State (Agar UI langsung berubah saat di-update) ---
+  // --- Ambil Data User & Jadikan State ---
   const [user, setUser] = useState(() => {
     const userDataString = localStorage.getItem('user');
     return userDataString ? JSON.parse(userDataString) : { 
-      id: 1, nama: 'Guest User', email: 'guest@clocksync.com', divisi: 'Unknown', role: 'magang', foto_profil: null
+      id: 1, nama: 'Guest User', username: 'guest', email: 'guest@clocksync.com', divisi: 'Unknown', role: 'magang', lokasi_id: null, foto_profil: null
     };
   });
 
   const empId = `EMP-${String(user.id).padStart(5, '0')}`;
+
+  // --- State Nama Lokasi ULP ---
+  const [namaLokasi, setNamaLokasi] = useState('');
 
   // --- State Statistik Dinamis ---
   const [stats, setStats] = useState({ leaveBalance: 14, onTimePercent: 100, score: 5.0, pendingLeaves: 0 });
@@ -23,9 +26,30 @@ export default function Profile() {
   // --- State untuk Modal Update Profile ---
   const [showModal, setShowModal] = useState(false);
   const [editNama, setEditNama] = useState(user.nama);
+  const [editUsername, setEditUsername] = useState(user.username || '');
   const [editFoto, setEditFoto] = useState(null);
   const [previewFoto, setPreviewFoto] = useState(user.foto_profil);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Ambil nama lokasi penempatan dari tabel settings
+  useEffect(() => {
+    const fetchLocationName = async () => {
+      if (!user.lokasi_id) return;
+      try {
+        const res = await fetch('https://absensi-magang-beta.vercel.app/api/admin/settings');
+        const result = await res.json();
+        if (result.success) {
+          const matchedLoc = result.data.find(loc => Number(loc.id) === Number(user.lokasi_id));
+          if (matchedLoc) {
+            setNamaLokasi(matchedLoc.nama_lokasi);
+          }
+        }
+      } catch (err) {
+        console.error('Gagal mengambil nama lokasi:', err);
+      }
+    };
+    fetchLocationName();
+  }, [user.lokasi_id]);
 
   useEffect(() => {
     const fetchUserStats = async () => {
@@ -93,13 +117,18 @@ export default function Profile() {
     const file = e.target.files[0];
     if (file) {
       setEditFoto(file);
-      setPreviewFoto(URL.createObjectURL(file)); // Buat URL sementara untuk preview
+      setPreviewFoto(URL.createObjectURL(file));
     }
   };
 
   // --- Fungsi Simpan Profile ke Backend ---
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (/\s/.test(editUsername)) {
+      alert('Username tidak boleh mengandung spasi!');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -107,12 +136,11 @@ export default function Profile() {
       const formData = new FormData();
       formData.append('user_id', user.id);
       formData.append('nama', editNama);
+      formData.append('username', editUsername.trim().toLowerCase());
       if (editFoto) {
         formData.append('foto_profil', editFoto);
       }
 
-      // CATATAN PENTING: Saat pakai FormData, JANGAN pasang 'Content-Type'. 
-      // Browser akan mengaturnya otomatis beserta boundary-nya.
       const response = await fetch('https://absensi-magang-beta.vercel.app/api/update-profile', {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -122,11 +150,10 @@ export default function Profile() {
       const result = await response.json();
 
       if (result.success) {
-        // Update LocalStorage agar sesi tetap login dengan data baru
         localStorage.setItem('user', JSON.stringify(result.user));
-        // Update State agar UI langsung berubah tanpa perlu refresh page
         setUser(result.user);
-        setShowModal(false); // Tutup modal
+        setShowModal(false);
+        alert('✅ Profil berhasil diperbarui!');
       } else {
         alert(result.message || 'Gagal update profil');
       }
@@ -138,6 +165,12 @@ export default function Profile() {
     }
   };
 
+  const formatTgl = (tglStr) => {
+    if (!tglStr) return null;
+    const date = new Date(tglStr);
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] dark:bg-slate-900 pb-28 relative shadow-2xl font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300">
       
@@ -145,7 +178,7 @@ export default function Profile() {
       <header className="bg-white dark:bg-slate-800 rounded-b-[40px] pt-12 pb-6 px-5 shadow-sm border-b border-slate-100 dark:border-slate-700 flex flex-col items-center relative overflow-hidden transition-colors">
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-blue-50 dark:from-slate-800 via-teal-50/30 dark:via-slate-700/30 to-transparent"></div>
         
-        {/* Avatar dengan logika menampilkan foto profil */}
+        {/* Avatar */}
         <div className="relative w-24 h-24 mb-3 z-10">
           {user.foto_profil ? (
             <img src={user.foto_profil} alt="Profile" className="w-full h-full rounded-full object-cover border-[4px] border-white dark:border-slate-800 shadow-md" />
@@ -159,31 +192,60 @@ export default function Profile() {
           <button 
             onClick={() => {
               setEditNama(user.nama);
+              setEditUsername(user.username || '');
               setPreviewFoto(user.foto_profil);
               setEditFoto(null);
               setShowModal(true);
             }} 
             className="absolute bottom-0 right-0 bg-blue-600 text-white p-1.5 rounded-full border-2 border-white dark:border-slate-800 shadow-sm hover:bg-blue-700 transition"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
           </button>
         </div>
         
-        {/* Nama & Role */}
+        {/* Nama, Username, & Badge Lokasi */}
         <div className="z-10 text-center">
           <h2 className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center justify-center gap-1.5">
             {user.nama}
             <svg className="w-5 h-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5">{user.role} {user.divisi}</p>
+
+          {user.username && (
+            <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5">@{user.username}</p>
+          )}
+          
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium capitalize mt-1">
+            {user.role} {user.divisi ? `• ${user.divisi}` : ''}
+          </p>
+
+          {/* 🔥 BADGE LOKASI PENEMPATAN ULP 🔥 */}
+          {namaLokasi && (
+            <div className="mt-2.5 flex justify-center">
+              <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/30 px-3 py-1 rounded-full text-xs font-bold">
+                📍 {namaLokasi}
+              </span>
+            </div>
+          )}
+
+          {user.universitas && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">
+              🎓 {user.universitas}
+            </p>
+          )}
           
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-xs font-bold">{empId}</span>
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{user.divisi}</span>
+            {(user.tgl_mulai || user.tgl_selesai) && (
+              <>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  {formatTgl(user.tgl_mulai)} - {formatTgl(user.tgl_selesai)}
+                </span>
+              </>
+            )}
           </div>
 
-          <div className="inline-flex mt-4 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-4 py-1.5 rounded-full text-xs font-bold items-center gap-1.5 border border-emerald-100 dark:border-emerald-500/20">
+          <div className="inline-flex mt-3.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-4 py-1.5 rounded-full text-xs font-bold items-center gap-1.5 border border-emerald-100 dark:border-emerald-500/20">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Active Employee
           </div>
         </div>
@@ -314,14 +376,14 @@ export default function Profile() {
       <BottomNav />
 
       {/* ======================================= */}
-      {/* 🔥 MODAL POP-UP EDIT PROFILE 🔥 */}
+      {/* 🔥 MODAL POP-UP EDIT PROFILE & USERNAME 🔥 */}
       {/* ======================================= */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative animate-fadeIn">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 text-center">Edit Profil</h3>
             
-            <form onSubmit={handleSaveProfile} className="space-y-5">
+            <form onSubmit={handleSaveProfile} className="space-y-4">
               {/* Area Klik Foto */}
               <div className="flex flex-col items-center">
                 <div 
@@ -357,6 +419,23 @@ export default function Profile() {
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   required
                 />
+              </div>
+
+              {/* 🔥 INPUT UBAH USERNAME 🔥 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Username (ID Login)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 font-bold text-sm">@</span>
+                  <input 
+                    type="text" 
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value.toLowerCase())}
+                    placeholder="contoh: joko123"
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-3 text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition lowercase"
+                    required
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Gunakan huruf kecil & angka tanpa spasi.</p>
               </div>
 
               {/* Tombol Aksi */}

@@ -13,12 +13,9 @@ cloudinary.config({
 
 const login = async (req, res) => {
     try {
-        // Karena input bisa username ATAU email, kita tangkap 'email' dari frontend 
-        // yang sekarang berfungsi ganda sebagai identifier.
         const identifier = req.body.email; 
         const { password } = req.body;
 
-        // Cari user berdasarkan username ATAU email
         const [rows] = await pool.execute('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
         
         if (rows.length === 0) return res.status(404).json({ success: false, message: 'Username atau Email tidak ditemukan.' });
@@ -27,14 +24,14 @@ const login = async (req, res) => {
         let isPasswordValid = false;
         
         if (user.password === password) {
-            isPasswordValid = true; 
+            isPasswordValid = true;
         } else {
             isPasswordValid = await bcrypt.compare(password, user.password);
         }
 
         if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Password salah.' });
 
-        // 🔥 SATPAM AKTIVASI 🔥
+        // SATPAM AKTIVASI 
         if (user.status === 'pending') {
             return res.status(403).json({ 
                 success: false, 
@@ -55,7 +52,10 @@ const login = async (req, res) => {
                 nama: user.nama, 
                 username: user.username,
                 email: user.email, 
-                divisi: user.divisi, 
+                divisi: user.divisi,
+                universitas: user.universitas || null,
+                tgl_mulai: user.tgl_mulai || null,
+                tgl_selesai: user.tgl_selesai || null,
                 role: user.role,
                 lokasi_id: user.lokasi_id,
                 foto_profil: user.foto_profil || null 
@@ -98,14 +98,15 @@ const ubahKataSandi = async (req, res) => {
     }
 };
 
-// 🔥 UPDATE REGISTER 🔥
+// UPDATE REGISTER: Tambah Universitas, Tgl Mulai, Tgl Selesai
 const register = async (req, res) => {
     try {
-        // Ambil data (termasuk username dan lokasi_id)
-        const { nama, username, email, password, lokasi_id } = req.body;
+        const { nama, username, email, password, lokasi_id, universitas, tgl_mulai, tgl_selesai } = req.body;
+
+        const cleanUsername = username.trim().toLowerCase();
 
         // Cek apakah username sudah ada
-        const [existingUser] = await pool.execute('SELECT id FROM users WHERE username = ?', [username]);
+        const [existingUser] = await pool.execute('SELECT id FROM users WHERE username = ?', [cleanUsername]);
         if (existingUser.length > 0) {
             return res.status(400).json({ success: false, message: 'Username sudah digunakan. Gunakan username lain!' });
         }
@@ -113,12 +114,26 @@ const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         
-        // Finalisasi data (email bisa null, lokasi default 1)
         const finalEmail = email || null;
         const finalLokasiId = lokasi_id || 1;
+        const finalUniversitas = universitas ? universitas.trim() : null;
+        const finalTglMulai = tgl_mulai || null;
+        const finalTglSelesai = tgl_selesai || null;
 
-        const insertQuery = `INSERT INTO users (nama, username, email, password, role, status, lokasi_id) VALUES (?, ?, ?, ?, 'magang', 'pending', ?)`;
-        await pool.execute(insertQuery, [nama, username, finalEmail, hashedPassword, finalLokasiId]);
+        const insertQuery = `
+            INSERT INTO users (nama, username, email, password, role, status, lokasi_id, universitas, tgl_mulai, tgl_selesai) 
+            VALUES (?, ?, ?, ?, 'magang', 'pending', ?, ?, ?, ?)
+        `;
+        await pool.execute(insertQuery, [
+            nama, 
+            cleanUsername, 
+            finalEmail, 
+            hashedPassword, 
+            finalLokasiId, 
+            finalUniversitas, 
+            finalTglMulai, 
+            finalTglSelesai
+        ]);
 
         res.status(201).json({ 
             success: true, 
@@ -131,9 +146,10 @@ const register = async (req, res) => {
     }
 };
 
+// UPDATE PROFILE: support ubah username
 const updateProfile = async (req, res) => {
     try {
-        const { user_id, nama } = req.body;
+        const { user_id, nama, username } = req.body;
         let url_foto_baru = null;
 
         if (req.file) {
@@ -167,11 +183,24 @@ const updateProfile = async (req, res) => {
         }
         const oldUser = existingUsers[0];
 
+        let finalUsername = oldUser.username;
+        if (username && username.trim() !== '' && username.trim().toLowerCase() !== oldUser.username) {
+            const cleanUsername = username.trim().toLowerCase();
+            if (/\s/.test(cleanUsername)) {
+                return res.status(400).json({ success: false, message: 'Username tidak boleh mengandung spasi!' });
+            }
+            const [dupUser] = await pool.execute('SELECT id FROM users WHERE username = ? AND id != ?', [cleanUsername, user_id]);
+            if (dupUser.length > 0) {
+                return res.status(400).json({ success: false, message: 'Username sudah dipakai pengguna lain!' });
+            }
+            finalUsername = cleanUsername;
+        }
+
         const finalNama = nama || oldUser.nama;
         const finalFoto = url_foto_baru || oldUser.foto_profil;
 
-        const updateQuery = `UPDATE users SET nama = ?, foto_profil = ? WHERE id = ?`;
-        await pool.execute(updateQuery, [finalNama, finalFoto, user_id]);
+        const updateQuery = `UPDATE users SET nama = ?, username = ?, foto_profil = ? WHERE id = ?`;
+        await pool.execute(updateQuery, [finalNama, finalUsername, finalFoto, user_id]);
 
         res.json({
             success: true,
@@ -179,10 +208,14 @@ const updateProfile = async (req, res) => {
             user: {
                 id: oldUser.id,
                 nama: finalNama,
-                username: oldUser.username,
+                username: finalUsername,
                 email: oldUser.email,
                 divisi: oldUser.divisi,
+                universitas: oldUser.universitas,
+                tgl_mulai: oldUser.tgl_mulai,
+                tgl_selesai: oldUser.tgl_selesai,
                 role: oldUser.role,
+                lokasi_id: oldUser.lokasi_id,
                 foto_profil: finalFoto
             }
         });

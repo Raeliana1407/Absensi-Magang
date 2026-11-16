@@ -1,14 +1,18 @@
 const pool = require('../config/db');
-const bcrypt = require('bcryptjs'); // Wajib ditambah!
+const bcrypt = require('bcryptjs');
 
-// Mengambil semua daftar user & nama pembimbingnya
+// Mengambil semua daftar user, nama pembimbing, dan lokasi ULP
 const getAllUsers = async (req, res) => {
     try {
         const query = `
-            SELECT u.id, u.nama, u.email, u.username, u.role, u.divisi, u.status, 
+            SELECT u.id, u.nama, u.email, u.username, u.role, u.divisi, u.universitas,
+                   DATE_FORMAT(u.tgl_mulai, '%Y-%m-%d') AS tgl_mulai,
+                   DATE_FORMAT(u.tgl_selesai, '%Y-%m-%d') AS tgl_selesai,
+                   u.lokasi_id, s.nama_lokasi, u.status, 
                    u.pembimbing_id, p.nama AS nama_pembimbing
             FROM users u
             LEFT JOIN users p ON u.pembimbing_id = p.id
+            LEFT JOIN settings s ON u.lokasi_id = s.id
             ORDER BY u.created_at DESC
         `;
         const [rows] = await pool.execute(query);
@@ -22,11 +26,22 @@ const getAllUsers = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, pembimbing_id, role, divisi } = req.body;
-        const p_id = pembimbing_id ? pembimbing_id : null;
+        const { status, pembimbing_id, role, divisi, universitas, lokasi_id, tgl_mulai, tgl_selesai } = req.body;
         
-        const query = `UPDATE users SET status = ?, pembimbing_id = ?, role = ?, divisi = ? WHERE id = ?`;
-        await pool.execute(query, [status, p_id, role, divisi, id]);
+        const p_id = pembimbing_id ? pembimbing_id : null;
+        const l_id = lokasi_id ? lokasi_id : null;
+        const finalUniv = universitas ? universitas.trim() : null;
+        const finalMulai = tgl_mulai ? tgl_mulai : null;
+        const finalSelesai = tgl_selesai ? tgl_selesai : null;
+        
+        const query = `
+            UPDATE users 
+            SET status = ?, pembimbing_id = ?, role = ?, divisi = ?, 
+                universitas = ?, lokasi_id = COALESCE(?, lokasi_id), 
+                tgl_mulai = ?, tgl_selesai = ? 
+            WHERE id = ?
+        `;
+        await pool.execute(query, [status, p_id, role, divisi, finalUniv, l_id, finalMulai, finalSelesai, id]);
         res.json({ success: true, message: 'Data pengguna berhasil diperbarui!' });
     } catch (error) {
         console.error("Error updateUser:", error);
@@ -47,7 +62,7 @@ const deleteUser = async (req, res) => {
     }
 };
 
-// 🔥 FUNGSI BARU: RESET PASSWORD 🔥
+// RESET PASSWORD
 const resetPassword = async (req, res) => {
     try {
         const { id } = req.params;

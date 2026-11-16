@@ -12,20 +12,28 @@ const getAnakBimbingan = async (req, res) => {
         let params = [];
 
         if (role === 'admin') {
-            // ADMIN: Tarik semua magang
+            // ADMIN: Tarik semua magang beserta lokasi ULP, kampus, dan periode magang
             query = `
-                SELECT id, nama, email, divisi, status, foto_profil, created_at 
-                FROM users 
-                WHERE role = 'magang'
-                ORDER BY id ASC
+                SELECT u.id, u.nama, u.username, u.email, u.divisi, u.universitas,
+                       DATE_FORMAT(u.tgl_mulai, '%Y-%m-%d') AS tgl_mulai,
+                       DATE_FORMAT(u.tgl_selesai, '%Y-%m-%d') AS tgl_selesai,
+                       u.lokasi_id, s.nama_lokasi, u.status, u.foto_profil, u.created_at 
+                FROM users u
+                LEFT JOIN settings s ON u.lokasi_id = s.id
+                WHERE u.role = 'magang'
+                ORDER BY u.id ASC
             `;
         } else {
             // PEMBIMBING: Tarik anak asuh saja
             query = `
-                SELECT id, nama, email, divisi, status, foto_profil, created_at 
-                FROM users 
-                WHERE pembimbing_id = ? AND role = 'magang'
-                ORDER BY id ASC
+                SELECT u.id, u.nama, u.username, u.email, u.divisi, u.universitas,
+                       DATE_FORMAT(u.tgl_mulai, '%Y-%m-%d') AS tgl_mulai,
+                       DATE_FORMAT(u.tgl_selesai, '%Y-%m-%d') AS tgl_selesai,
+                       u.lokasi_id, s.nama_lokasi, u.status, u.foto_profil, u.created_at 
+                FROM users u
+                LEFT JOIN settings s ON u.lokasi_id = s.id
+                WHERE u.pembimbing_id = ? AND u.role = 'magang'
+                ORDER BY u.id ASC
             `;
             params = [id];
         }
@@ -45,7 +53,16 @@ const getDetailMahasiswa = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const [userInfo] = await pool.execute('SELECT nama, divisi, email FROM users WHERE id = ?', [id]);
+        const [userInfo] = await pool.execute(`
+            SELECT u.id, u.nama, u.username, u.divisi, u.email, u.universitas,
+                   DATE_FORMAT(u.tgl_mulai, '%Y-%m-%d') AS tgl_mulai,
+                   DATE_FORMAT(u.tgl_selesai, '%Y-%m-%d') AS tgl_selesai,
+                   s.nama_lokasi, u.foto_profil
+            FROM users u
+            LEFT JOIN settings s ON u.lokasi_id = s.id
+            WHERE u.id = ?
+        `, [id]);
+        
         if (userInfo.length === 0) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
 
         let absen = [];
@@ -95,6 +112,38 @@ const getDetailMahasiswa = async (req, res) => {
     } catch (error) {
         console.error("Fatal Error getDetailMahasiswa:", error.message);
         res.status(500).json({ success: false, message: 'Server error: ' + error.message });
+    }
+};
+
+// ==========================================
+// 3. Fungsi Khusus Pembimbing Ubah Tanggal Magang
+// ==========================================
+const updatePeriodeMagang = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { tgl_mulai, tgl_selesai } = req.body;
+
+        if (tgl_mulai && tgl_selesai && tgl_selesai < tgl_mulai) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Tanggal selesai magang tidak boleh lebih awal dari tanggal mulai!' 
+            });
+        }
+
+        const finalMulai = tgl_mulai || null;
+        const finalSelesai = tgl_selesai || null;
+
+        const query = `UPDATE users SET tgl_mulai = ?, tgl_selesai = ? WHERE id = ? AND role = 'magang'`;
+        const [result] = await pool.execute(query, [finalMulai, finalSelesai, id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'Data peserta magang tidak ditemukan.' });
+        }
+
+        res.json({ success: true, message: 'Periode magang berhasil diperbarui!' });
+    } catch (error) {
+        console.error('Error updatePeriodeMagang:', error);
+        res.status(500).json({ success: false, message: 'Gagal memperbarui periode magang.' });
     }
 };
 
@@ -185,6 +234,7 @@ const getDashboardHariIni = async (req, res) => {
                 name: u.nama,
                 nim: `EMP-${String(u.id).padStart(5, '0')}`,
                 role: u.divisi || 'Intern',
+                nama_lokasi: namaLokasiUtama,
                 time: time,
                 timeStatus: timeStatus,
                 loc: loc,
@@ -203,4 +253,4 @@ const getDashboardHariIni = async (req, res) => {
     }
 };
 
-module.exports = { getAnakBimbingan, getDetailMahasiswa, getDashboardHariIni };
+module.exports = { getAnakBimbingan, getDetailMahasiswa, updatePeriodeMagang, getDashboardHariIni };

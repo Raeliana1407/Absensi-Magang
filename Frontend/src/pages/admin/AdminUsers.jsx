@@ -4,6 +4,7 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('semua'); 
   const [users, setUsers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // State untuk Modal Edit / Approve
@@ -13,12 +14,16 @@ export default function AdminUsers() {
     status: 'aktif',
     role: 'magang',
     divisi: '',
+    universitas: '',
+    lokasi_id: '',
+    tgl_mulai: '',
+    tgl_selesai: '',
     pembimbing_id: ''
   });
 
   const token = localStorage.getItem('token');
 
-  // Ambil data user dari backend
+  // Ambil data user & lokasi dari backend
   const fetchUsers = async () => {
     try {
       const response = await fetch('https://absensi-magang-beta.vercel.app/api/admin/users', {
@@ -35,18 +40,42 @@ export default function AdminUsers() {
     }
   };
 
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch('https://absensi-magang-beta.vercel.app/api/admin/settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setLocations(result.data);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil lokasi:", error);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchLocations();
   }, []);
 
   const listPembimbing = users.filter(u => u.role === 'pembimbing');
+
+  // Format tanggal biar enak dibaca di tabel
+  const formatTgl = (tglStr) => {
+    if (!tglStr) return '-';
+    const date = new Date(tglStr);
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   // LOGIKA PENCARIAN & FILTER
   const filteredUsers = users.filter(u => {
     const userStatus = u.status || 'aktif'; 
     const matchSearch = u.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                        (u.username && u.username.toLowerCase().includes(searchTerm.toLowerCase()));
+                        (u.username && u.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                        (u.universitas && u.universitas.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                        (u.nama_lokasi && u.nama_lokasi.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchStatus = filterStatus === 'semua' ? true : userStatus === filterStatus;
     return matchSearch && matchStatus;
   });
@@ -58,6 +87,10 @@ export default function AdminUsers() {
       status: user.status || 'aktif',
       role: user.role || 'magang',
       divisi: user.divisi || '',
+      universitas: user.universitas || '',
+      lokasi_id: user.lokasi_id || '',
+      tgl_mulai: user.tgl_mulai || '',
+      tgl_selesai: user.tgl_selesai || '',
       pembimbing_id: user.pembimbing_id || ''
     });
     setIsModalOpen(true);
@@ -66,6 +99,11 @@ export default function AdminUsers() {
   // Submit Update
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (formData.tgl_mulai && formData.tgl_selesai && formData.tgl_selesai < formData.tgl_mulai) {
+      alert('Tanggal selesai tidak boleh lebih awal dari tanggal mulai!');
+      return;
+    }
+
     try {
       const response = await fetch(`https://absensi-magang-beta.vercel.app/api/admin/users/${selectedUser.id}`, {
         method: 'PUT',
@@ -90,9 +128,7 @@ export default function AdminUsers() {
     }
   };
 
-  // ==========================================
   // FITUR HAPUS USER
-  // ==========================================
   const handleDelete = async (id, nama) => {
     const confirmDelete = window.confirm(`⚠️ PERINGATAN!\n\nApakah Anda yakin ingin menghapus akun "${nama}" secara permanen?\nSemua data presensi dan logbook yang terkait dengan akun ini mungkin akan ikut terhapus.`);
     
@@ -118,9 +154,7 @@ export default function AdminUsers() {
     }
   };
 
-  // ==========================================
   // FITUR RESET PASSWORD
-  // ==========================================
   const handleResetPassword = async (id, nama) => {
     const confirmReset = window.confirm(`🔐 RESET PASSWORD\n\nApakah Anda yakin ingin me-reset password untuk akun "${nama}"?\n\nPassword akan diubah kembali ke default: "magang123"`);
     
@@ -153,7 +187,7 @@ export default function AdminUsers() {
         <div>
           <span className="text-[10px] font-bold text-slate-800 tracking-widest uppercase bg-slate-100 px-3 py-1 rounded-full">Data Master</span>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 mt-2">Manajemen Pengguna</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-0.5">Kelola akses akun magang, pembimbing, dan administrator sistem.</p>
+          <p className="text-xs md:text-sm text-slate-500 mt-0.5">Kelola akses akun magang, pembimbing, lokasi ULP, dan masa magang.</p>
         </div>
       </div>
 
@@ -163,7 +197,7 @@ export default function AdminUsers() {
             <svg className="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             <input 
               type="text" 
-              placeholder="Cari nama, username atau email..." 
+              placeholder="Cari nama, username, kampus, ULP..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-transparent border-none outline-none text-sm w-full font-medium text-slate-700" 
@@ -203,21 +237,22 @@ export default function AdminUsers() {
 
       {/* TABEL DATA USER */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
-        <table className="w-full text-left min-w-[950px]">
+        <table className="w-full text-left min-w-[1050px]">
           <thead className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             <tr>
               <th className="p-5">Pengguna & Akun</th>
               <th className="p-5">Status</th>
-              <th className="p-5">Role & Divisi</th>
+              <th className="p-5">Role, Divisi & Instansi</th>
+              <th className="p-5">Periode Magang</th>
               <th className="p-5">Pembimbing</th>
               <th className="p-5 text-right">Aksi Manajemen</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-              <tr><td colSpan="5" className="p-5 text-center text-sm text-slate-500">Memuat data...</td></tr>
+              <tr><td colSpan="6" className="p-5 text-center text-sm text-slate-500">Memuat data...</td></tr>
             ) : filteredUsers.length === 0 ? (
-              <tr><td colSpan="5" className="p-5 text-center text-sm text-slate-500">
+              <tr><td colSpan="6" className="p-5 text-center text-sm text-slate-500">
                 {filterStatus !== 'semua' ? `Tidak ada pengguna dengan status ${filterStatus}.` : 'Data tidak ditemukan.'}
               </td></tr>
             ) : (
@@ -225,17 +260,21 @@ export default function AdminUsers() {
                 <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-5">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white ${user.role === 'admin' ? 'bg-amber-500' : user.role === 'pembimbing' ? 'bg-emerald-500' : 'bg-blue-600'}`}>
+                      <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm text-white ${user.role === 'admin' ? 'bg-amber-500' : user.role === 'pembimbing' ? 'bg-emerald-500' : 'bg-blue-600'}`}>
                         {user.nama.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <p className="font-bold text-slate-800 text-sm">{user.nama}</p>
-                        
-                        {/* MENAMPILKAN USERNAME DI BAWAH NAMA */}
-                        <p className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
-                          @{user.username || 'Belum Set Username'}
-                        </p>
-                        
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                            @{user.username || 'Belum Set Username'}
+                          </span>
+                          {user.nama_lokasi && (
+                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                              📍 {user.nama_lokasi}
+                            </span>
+                          )}
+                        </div>
                         {user.email && <p className="text-[10px] text-slate-400 mt-0.5">{user.email}</p>}
                       </div>
                     </div>
@@ -250,18 +289,24 @@ export default function AdminUsers() {
                     </span>
                   </td>
                   <td className="p-5">
-                     <p className="text-sm font-bold text-slate-700 capitalize">{user.role}</p>
-                     <p className="text-xs text-slate-500">{user.divisi || '-'}</p>
+                     <p className="text-sm font-bold text-slate-700 capitalize">{user.role} <span className="font-normal text-slate-400">• {user.divisi || 'Belum ada divisi'}</span></p>
+                     {user.universitas && (
+                       <p className="text-xs font-medium text-slate-500 mt-0.5">🎓 {user.universitas}</p>
+                     )}
+                  </td>
+                  <td className="p-5 text-xs font-medium text-slate-600">
+                    {user.role === 'magang' && (user.tgl_mulai || user.tgl_selesai) ? (
+                      <div className="space-y-0.5">
+                        <p><span className="text-slate-400">Mulai:</span> {formatTgl(user.tgl_mulai)}</p>
+                        <p><span className="text-slate-400">Selesai:</span> <span className="font-bold text-slate-800">{formatTgl(user.tgl_selesai)}</span></p>
+                      </div>
+                    ) : '-'}
                   </td>
                   <td className="p-5 text-sm font-medium text-slate-600">
                     {user.nama_pembimbing || '-'}
                   </td>
                   <td className="p-5 text-right">
-                    
-                    {/* BUTTONS GROUP */}
                     <div className="flex items-center justify-end gap-2">
-                      
-                      {/* TOMBOL RESET PASSWORD */}
                       <button 
                         onClick={() => handleResetPassword(user.id, user.nama)}
                         title="Reset Password ke Default (magang123)"
@@ -270,7 +315,6 @@ export default function AdminUsers() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
                       </button>
 
-                      {/* TOMBOL EDIT */}
                       <button 
                         onClick={() => handleEditClick(user)}
                         className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1.5"
@@ -279,7 +323,6 @@ export default function AdminUsers() {
                         Edit
                       </button>
                       
-                      {/* TOMBOL HAPUS */}
                       <button 
                         onClick={() => handleDelete(user.id, user.nama)}
                         className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1.5"
@@ -288,7 +331,6 @@ export default function AdminUsers() {
                         Hapus
                       </button>
                     </div>
-
                   </td>
                 </tr>
               ))
@@ -297,51 +339,86 @@ export default function AdminUsers() {
         </table>
       </div>
 
-      {/* MODAL EDIT */}
+      {/* MODAL EDIT LENGKAP */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden my-8">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-black text-slate-800 text-lg">Edit Pengguna</h3>
+              <div>
+                <h3 className="font-black text-slate-800 text-lg">Edit Pengguna</h3>
+                <p className="text-xs text-slate-500">{selectedUser?.nama} (@{selectedUser?.username})</p>
+              </div>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
               </button>
             </div>
             
-            <form onSubmit={handleUpdate} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Status Akun</label>
-                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50">
-                  <option value="pending">Pending (Menunggu Approve)</option>
-                  <option value="aktif">Aktif</option>
-                  <option value="nonaktif">Nonaktif</option>
-                </select>
+            <form onSubmit={handleUpdate} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Status Akun</label>
+                  <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50">
+                    <option value="pending">Pending (Menunggu Approve)</option>
+                    <option value="aktif">Aktif</option>
+                    <option value="nonaktif">Nonaktif</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Role Akses</label>
+                  <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50">
+                    <option value="magang">Anak Magang</option>
+                    <option value="pembimbing">Pembimbing / Supervisor</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Role Akses</label>
-                <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50">
-                  <option value="magang">Anak Magang</option>
-                  <option value="pembimbing">Pembimbing / Supervisor</option>
-                  <option value="admin">Admin</option>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Lokasi Penempatan (ULP / Unit)</label>
+                <select value={formData.lokasi_id} onChange={(e) => setFormData({...formData, lokasi_id: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50">
+                  <option value="">-- Pilih Titik Lokasi --</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.id}>{loc.nama_lokasi}</option>
+                  ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Divisi / Penempatan</label>
-                <input type="text" value={formData.divisi} onChange={(e) => setFormData({...formData, divisi: e.target.value})} placeholder="Contoh: Frontend Web" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Divisi / Bidang</label>
+                  <input type="text" value={formData.divisi} onChange={(e) => setFormData({...formData, divisi: e.target.value})} placeholder="Contoh: Jaringan / Keuangan" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Asal Universitas / Sekolah</label>
+                  <input type="text" value={formData.universitas} onChange={(e) => setFormData({...formData, universitas: e.target.value})} placeholder="Contoh: ITH Parepare" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50" />
+                </div>
               </div>
 
               {formData.role === 'magang' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Pembimbing</label>
-                  <select value={formData.pembimbing_id} onChange={(e) => setFormData({...formData, pembimbing_id: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50">
-                    <option value="">-- Belum ada pembimbing --</option>
-                    {listPembimbing.map(p => (
-                      <option key={p.id} value={p.id}>{p.nama}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Mulai Magang</label>
+                      <input type="date" value={formData.tgl_mulai} onChange={(e) => setFormData({...formData, tgl_mulai: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Selesai Magang</label>
+                      <input type="date" min={formData.tgl_mulai || undefined} value={formData.tgl_selesai} onChange={(e) => setFormData({...formData, tgl_selesai: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Pembimbing</label>
+                    <select value={formData.pembimbing_id} onChange={(e) => setFormData({...formData, pembimbing_id: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none bg-slate-50">
+                      <option value="">-- Belum ada pembimbing --</option>
+                      {listPembimbing.map(p => (
+                        <option key={p.id} value={p.id}>{p.nama}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               <div className="pt-4 flex gap-3">

@@ -1,16 +1,23 @@
 const express = require('express');
 const router = express.Router();
 
-// Update Import-nya
-const { getAnakBimbingan, getDetailMahasiswa, getDashboardHariIni } = require('../controllers/pembimbingController');
+const { 
+    getAnakBimbingan, 
+    getDetailMahasiswa, 
+    getDashboardHariIni,
+    updatePeriodeMagang 
+} = require('../controllers/pembimbingController');
 
-// Route list bimbingan (yang lama)
+// Route list bimbingan
 router.get('/bimbingan/:id', getAnakBimbingan);
 
-// Route detail mahasiswa (BARU)
+// Route detail mahasiswa
 router.get('/mahasiswa/:id/detail', getDetailMahasiswa);
 
-// Route Dashboard Hari Ini (BARU TAMBAHKAN INI)
+// Route Dashboard Hari Ini
 router.get('/dashboard-hari-ini/:pembimbing_id', getDashboardHariIni);
+
+// Route khusus Pembimbing ubah tanggal mulai / selesai magang anak bimbingan
+router.put('/mahasiswa/:id/periode', updatePeriodeMagang);
 
 module.exports = router;

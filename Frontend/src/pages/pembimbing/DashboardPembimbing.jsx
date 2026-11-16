@@ -4,6 +4,7 @@ export default function DashboardPembimbing() {
   const [bimbingan, setBimbingan] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterActive, setFilterActive] = useState('Semua');
+  const [filterLokasi, setFilterLokasi] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
 
   const userDataString = localStorage.getItem('user');
@@ -34,7 +35,9 @@ export default function DashboardPembimbing() {
     };
 
     if (user.id) fetchDashboard();
-  }, [user.id]);
+  }, [user.id, user.role]);
+
+  const uniqueLocations = [...new Set(bimbingan.map(b => b.nama_lokasi).filter(Boolean))];
 
   const totalBimbingan = bimbingan.length;
   const countOnTrack = bimbingan.filter(b => b.status === 'ontrack').length;
@@ -43,13 +46,16 @@ export default function DashboardPembimbing() {
   const hadirPercent = totalBimbingan ? Math.round(((countOnTrack + countLate) / totalBimbingan) * 100) : 0;
 
   const filteredData = bimbingan.filter((mhs) => {
-    const matchesSearch = mhs.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = mhs.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          mhs.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          mhs.nama_lokasi?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLokasi = filterLokasi === 'Semua' ? true : mhs.nama_lokasi === filterLokasi;
     let matchesFilter = true;
     if (filterActive === 'In-Zone') matchesFilter = mhs.status === 'ontrack';
     if (filterActive === 'Terlambat') matchesFilter = mhs.status === 'late';
     if (filterActive === 'Izin Sakit') matchesFilter = mhs.status === 'absent';
-    return matchesSearch && matchesFilter;
-  }).sort((a, b) => a.id - b.id); // 🔥 TAMBAHKAN BARIS INI UNTUK URUTAN BERDASARKAN ID 🔥
+    return matchesSearch && matchesLokasi && matchesFilter;
+  }).sort((a, b) => a.id - b.id);
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
@@ -115,18 +121,31 @@ export default function DashboardPembimbing() {
       </div>
 
       {/* 3. FILTER & SEARCH */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-100">
-         <div className="w-full md:w-1/3 flex items-center bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
-            <svg className="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input 
-              type="text" 
-              placeholder="Cari nama bimbingan..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm w-full font-medium" 
-            />
+      <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-100">
+         <div className="w-full lg:w-1/2 flex flex-col sm:flex-row gap-2.5">
+           <div className="flex-1 flex items-center bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
+              <svg className="w-5 h-5 text-slate-400 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <input 
+                type="text" 
+                placeholder="Cari nama, divisi, atau ULP..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-sm w-full font-medium" 
+              />
+           </div>
+           <select
+             value={filterLokasi}
+             onChange={(e) => setFilterLokasi(e.target.value)}
+             className="bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 cursor-pointer"
+           >
+             <option value="Semua">📍 Semua ULP ({uniqueLocations.length})</option>
+             {uniqueLocations.map((loc, idx) => (
+               <option key={idx} value={loc}>{loc}</option>
+             ))}
+           </select>
          </div>
-         <div className="w-full md:w-auto flex overflow-x-auto gap-2 pb-1 md:pb-0 hide-scrollbar">
+
+         <div className="w-full lg:w-auto flex overflow-x-auto gap-2 pb-1 lg:pb-0 hide-scrollbar">
             {['Semua', 'In-Zone', 'Terlambat', 'Izin Sakit'].map((tab) => (
               <button 
                 key={tab}
@@ -170,9 +189,7 @@ export default function DashboardPembimbing() {
                   <tr key={mhs.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-5">
                       <div className="flex items-center gap-3">
-                        
-                        {/* 🔥 BAGIAN FOTO PROFIL DINAMIS (DESKTOP) 🔥 */}
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700 overflow-hidden border border-slate-200">
+                        <div className="w-10 h-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700 overflow-hidden border border-slate-200">
                           {mhs.foto_profil ? (
                             <img 
                               src={mhs.foto_profil.startsWith('http') ? mhs.foto_profil : `https://absensi-magang-beta.vercel.app/uploads/${mhs.foto_profil}`} 
@@ -186,7 +203,12 @@ export default function DashboardPembimbing() {
 
                         <div>
                           <p className="font-bold text-slate-800 text-sm">{mhs.name}</p>
-                          <p className="text-xs text-slate-500">{mhs.nim} {mhs.role}</p>
+                          <p className="text-xs text-slate-500">{mhs.nim} • {mhs.role}</p>
+                          {mhs.nama_lokasi && (
+                            <span className="inline-block mt-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                              📍 {mhs.nama_lokasi}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -195,7 +217,6 @@ export default function DashboardPembimbing() {
                       <p className={`text-xs mt-0.5 font-medium ${mhs.status === 'late' ? 'text-amber-500' : mhs.status === 'absent' ? 'text-rose-500' : mhs.status === 'belum_absen' ? 'text-slate-400' : 'text-emerald-500'}`}>{mhs.timeStatus}</p>
                     </td>
                     <td className="p-5">
-                      {/* 🔥 BAGIAN LOKASI DINAMIS 🔥 */}
                       <p className="text-sm font-bold text-slate-700">{mhs.loc}</p>
                       <div className="flex items-center gap-1 mt-1">
                         <div className={`w-1.5 h-1.5 rounded-full ${mhs.status === 'absent' || mhs.status === 'belum_absen' ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
@@ -218,9 +239,7 @@ export default function DashboardPembimbing() {
               <div key={mhs.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-3">
-                    
-                    {/* 🔥 BAGIAN FOTO PROFIL DINAMIS (MOBILE) 🔥 */}
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700 relative overflow-hidden border border-slate-200">
+                    <div className="w-12 h-12 shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700 relative overflow-hidden border border-slate-200">
                       {mhs.foto_profil ? (
                         <img 
                           src={mhs.foto_profil.startsWith('http') ? mhs.foto_profil : `https://absensi-magang-beta.vercel.app/uploads/${mhs.foto_profil}`} 
@@ -235,6 +254,11 @@ export default function DashboardPembimbing() {
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{mhs.name}</p>
                       <p className="text-[10px] text-slate-500">{mhs.role}</p>
+                      {mhs.nama_lokasi && (
+                        <span className="inline-block mt-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          📍 {mhs.nama_lokasi}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className={`px-2 py-1 rounded-md text-[10px] font-bold ${mhs.status === 'late' ? 'bg-amber-50 text-amber-600' : mhs.status === 'absent' || mhs.status === 'belum_absen' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600'}`}>
@@ -245,7 +269,6 @@ export default function DashboardPembimbing() {
                 <div className="bg-slate-50 p-3 rounded-xl mb-3">
                   <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    {/* 🔥 BAGIAN LOKASI DINAMIS 🔥 */}
                     {mhs.loc}
                   </p>
                   <p className="text-[11px] text-slate-500 mt-1 ml-5 truncate">{mhs.activity}</p>

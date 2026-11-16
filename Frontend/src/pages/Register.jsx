@@ -3,15 +3,22 @@ import { useNavigate, Link } from 'react-router-dom';
 
 export default function Register() {
   const navigate = useNavigate();
-  // Tambahkan field username dan lokasi_id di state form
-  const [formData, setFormData] = useState({ nama: '', username: '', email: '', password: '', lokasi_id: '' });
-  const [showPassword, setShowPassword] = useState(false); // 🔥 FITUR MATA 🔥
+  const [formData, setFormData] = useState({ 
+    nama: '', 
+    username: '', 
+    email: '', 
+    universitas: '',
+    tgl_mulai: '',
+    tgl_selesai: '',
+    password: '', 
+    lokasi_id: '' 
+  });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pesan, setPesan] = useState({ type: '', text: '' });
   
-  const [locations, setLocations] = useState([]); // State untuk nampung data ULP dari DB
+  const [locations, setLocations] = useState([]);
 
-  // Ambil daftar lokasi saat form di-load
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -19,7 +26,6 @@ export default function Register() {
         const result = await response.json();
         if (result.success) {
           setLocations(result.data);
-          // Set lokasi default jika data ada
           if(result.data.length > 0) {
             setFormData(prev => ({...prev, lokasi_id: result.data[0].id}));
           }
@@ -37,9 +43,12 @@ export default function Register() {
       setPesan({ type: 'error', text: 'Password minimal 6 karakter!' });
       return;
     }
-    // Validasi tambahan untuk username yang tidak boleh ada spasi
     if (/\s/.test(formData.username)) {
       setPesan({ type: 'error', text: 'Username tidak boleh mengandung spasi!' });
+      return;
+    }
+    if (formData.tgl_mulai && formData.tgl_selesai && formData.tgl_selesai < formData.tgl_mulai) {
+      setPesan({ type: 'error', text: 'Tanggal selesai magang tidak boleh lebih awal dari tanggal mulai!' });
       return;
     }
 
@@ -56,7 +65,16 @@ export default function Register() {
 
       if (result.success) {
         setPesan({ type: 'success', text: result.message });
-        setFormData({ nama: '', username: '', email: '', password: '', lokasi_id: locations.length > 0 ? locations[0].id : '' });
+        setFormData({ 
+          nama: '', 
+          username: '', 
+          email: '', 
+          universitas: '',
+          tgl_mulai: '',
+          tgl_selesai: '',
+          password: '', 
+          lokasi_id: locations.length > 0 ? locations[0].id : '' 
+        });
         setTimeout(() => navigate('/login'), 3000);
       } else {
         setPesan({ type: 'error', text: result.message });
@@ -75,7 +93,7 @@ export default function Register() {
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
 
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden relative z-10 my-8">
+      <div className="w-full max-w-lg bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden relative z-10 my-8">
         <div className="p-8 sm:p-10">
           
           <div className="text-center mb-8">
@@ -122,6 +140,43 @@ export default function Register() {
                   value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})}
                   className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none bg-slate-50 transition-all lowercase" 
                   placeholder="contoh: joko123"
+                />
+              </div>
+            </div>
+
+            {/* INPUT ASAL UNIVERSITAS / SEKOLAH */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Asal Universitas / Sekolah</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path></svg>
+                </div>
+                <input 
+                  type="text" required
+                  value={formData.universitas} onChange={(e) => setFormData({...formData, universitas: e.target.value})}
+                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none bg-slate-50 transition-all" 
+                  placeholder="Contoh: ITH / UNM / SMKN 1 Parepare"
+                />
+              </div>
+            </div>
+
+            {/* INPUT PERIODE MAGANG (MULAI & SELESAI) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Tanggal Mulai Magang</label>
+                <input 
+                  type="date" required
+                  value={formData.tgl_mulai} onChange={(e) => setFormData({...formData, tgl_mulai: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none bg-slate-50 transition-all text-slate-700" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1">Tanggal Berakhir Magang</label>
+                <input 
+                  type="date" required
+                  min={formData.tgl_mulai || undefined}
+                  value={formData.tgl_selesai} onChange={(e) => setFormData({...formData, tgl_selesai: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none bg-slate-50 transition-all text-slate-700" 
                 />
               </div>
             </div>
